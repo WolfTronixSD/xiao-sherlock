@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "2.7"
+#define FW_VERSION "2.8"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -97,6 +97,9 @@ struct LiveState {
   volatile int  phoneHome = -1;      // -1 not watched, 0 away, 1 home
   bool sdOK = false;
   uint32_t freeMB = 0;
+  uint32_t totalMB = 0;
+  uint32_t boots = 0;                // restarts since the firmware was first installed
+  const char *resetWhy = "?";        // why the last restart happened
   String pinWarning;
 };
 extern LiveState live;

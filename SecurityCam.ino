@@ -9,6 +9,8 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <time.h>
+#include <Preferences.h>
+#include "esp_system.h"
 #include "app.h"
 
 // Optional first-boot Wi-Fi: copy secrets.example.h to secrets.h (not committed to git).
@@ -16,6 +18,28 @@
 #if __has_include("secrets.h")
 #include "secrets.h"
 #endif
+
+// Count restarts and remember why the last one happened (for the Doctor's Report)
+static void countBoot() {
+  Preferences p;
+  p.begin("baker221b", false);
+  live.boots = p.getUInt("boots", 0) + 1;
+  p.putUInt("boots", live.boots);
+  p.end();
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:  live.resetWhy = "power on"; break;
+    case ESP_RST_SW:       live.resetWhy = "restart (web, update or watchdog)"; break;
+    case ESP_RST_PANIC:    live.resetWhy = "crash"; break;
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:      live.resetWhy = "watchdog"; break;
+    case ESP_RST_BROWNOUT: live.resetWhy = "power dip (brownout)"; break;
+    case ESP_RST_DEEPSLEEP:live.resetWhy = "woke from sleep"; break;
+    case ESP_RST_EXT:      live.resetWhy = "reset button"; break;
+    case ESP_RST_USB:      live.resetWhy = "USB (upload)"; break;
+    default:               live.resetWhy = "other"; break;
+  }
+}
 
 static void startWifi() {
   const char *s = cfg.wifiSsid, *p = cfg.wifiPass;
@@ -49,6 +73,7 @@ void setup() {
   Serial.println("\n=== 221B Baker Street security recorder " FW_VERSION " ===");
   buildFields();
   loadConfig();
+  countBoot();
   // The clock survives a software restart, so set the time zone now, not only when Wi-Fi is up,
   // or files saved right after a restart get UTC names.
   setenv("TZ", cfg.tz, 1);
@@ -67,7 +92,8 @@ void setup() {
   telegramStart();
   presenceStart();
   janitorStart();
-  logEvent("start", "Holmes", String("on duty, ") + (cfg.armed ? "ARMED" : "disarmed") + ", firmware " FW_VERSION);
+  logEvent("start", "Holmes", String("on duty, ") + (cfg.armed ? "ARMED" : "disarmed") + ", firmware " FW_VERSION +
+           ", restart #" + live.boots + " (" + live.resetWhy + ")");
 }
 
 void loop() {

@@ -47,6 +47,12 @@ static void handleStatus() {
   d["wifiFromWeb"] = cfg.wifiSsid[0] != 0;
   d["heap"] = ESP.getFreeHeap() / 1024;
   d["psram"] = ESP.getFreePsram() / 1024;
+  d["minHeap"] = ESP.getMinFreeHeap() / 1024;
+  d["maxBlock"] = ESP.getMaxAllocHeap() / 1024;
+  d["tempC"] = (int)roundf(temperatureRead());
+  d["totalMB"] = live.totalMB;
+  d["boots"] = live.boots;
+  d["reset"] = live.resetWhy;
   d["fw"] = FW_VERSION;
   d["phoneHome"] = live.phoneHome;
   d["warn"] = live.pinWarning;

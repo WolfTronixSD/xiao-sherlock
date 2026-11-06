@@ -42,6 +42,7 @@ nav button.on{background:var(--card);font-weight:bold;position:relative;top:1px}
 #micMeter{height:22px;cursor:ew-resize;touch-action:none}#micMeter b{width:5px;margin-left:-2px;box-shadow:0 0 0 1px #fff8}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .lamp{display:inline-block;width:12px;height:12px;border-radius:50%;background:#998;border:1px solid #554;vertical-align:middle;margin-right:6px}
+.health td{padding:3px 6px;vertical-align:top}.health td:first-child{white-space:nowrap}
 .lamp.hi{background:#e8b030;box-shadow:0 0 6px #f0c040}.lamp.lo{background:#3e6b4a}.lamp.rec{background:#c62828;box-shadow:0 0 6px #f44;animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.3}}
 .inst div{margin:5px 0}
@@ -122,6 +123,8 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
     <div id="sonarBox"></div>
     <div id="warn" style="color:var(--red)"></div>
    </div>
+   <div class="card"><h2>&#129658; The Doctor's Report</h2><table class="health" id="health"></table>
+    <div class="small">Green: in good health. Amber: keep an eye on it. Red: send for Dr Watson.</div></div>
    <div class="card"><h2>The Radar</h2><canvas id="radar" width="340" height="190"></canvas>
     <div class="small" id="radarTxt"></div></div>
   </div>
@@ -234,7 +237,7 @@ async function status(){try{st=await (await api('/api/status')).json()}catch(e){
  $('inputs').innerHTML=st.inputs.filter(i=>i.en).map(i=>`<div><span class="lamp ${i.level==1?'hi':i.level==0?'lo':''}"></span>${esc(i.name)} <span class="small">${esc(i.pin)}: ${i.level==1?'HIGH':i.level==0?'LOW':'?'}</span></div>`).join('')||'<div class="small">None strung. See Instructions to Watson.</div>';
  $('sonarBox').innerHTML=st.sonarEn?`<div style="margin-top:8px"><b>The Bat Ears</b> ${st.sonarCm<0?'nothing in range':st.sonarCm+' cm'} <span class="small">(trigger under ${st.sonarLimit} cm)</span></div>`:'';
  $('warn').textContent=st.warn||'';
- drawRadar();
+ drawRadar();health();
  if(st.motionEn===false)$('motionNote').textContent='Motion detection is off - switch it on under Instructions to Watson.';else $('motionNote').textContent='Whole picture changed: '+st.motionGlobal+'%';
  zones.forEach((z,i)=>{const c=$('zp'+i),m=$('zm'+i),v=st.motion[i]||0;if(c)c.textContent=v+'%';
   if(m){m.style.width=Math.min(100,v)+'%';m.nextElementSibling.style.left=z.minPct+'%'}});
@@ -449,8 +452,9 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['2.8','2026-11-05',"The Doctor's Report",['Health panel on The Scene: Wi-Fi, chip temperature, uptime, memory, PSRAM, card and restarts, each with a lamp','Restarts are counted and their reason is shown and written to the case log']],
  ['2.7','2026-11-05','The Tidy Lodger',['When the card is over 90% full (adjustable) the oldest days are deleted until there is room','Today and the case log are never touched; each clean-up is written in the case log']],
- ['2.6','2026-11-05','Mrs Hudson's Timetable',['Arm and disarm on a daily schedule; the button still wins until the next scheduled minute','Watches for your phone on the Wi-Fi: arms when it leaves, disarms when it comes back','The morning disarm is skipped while the phone is out']],
+ ['2.6','2026-11-05',"Mrs Hudson's Timetable",['Arm and disarm on a daily schedule; the button still wins until the next scheduled minute','Watches for your phone on the Wi-Fi: arms when it leaves, disarms when it comes back','The morning disarm is skipped while the phone is out']],
  ['2.5','2026-11-05','The Adventure of the Red Line',['Drag the red threshold line on the Listening Post meter; it is saved at once','Settings retry loading; "Seal and send" waits until they have loaded, so empty settings can never be sent','The time zone is set at boot, before the first file is named']],
  ['2.4','2026-11-05','The Statistician\'s Notebook',['Evidence Locker statistics: totals, clues per day, by hour and by sensor','The Timeline: a whole day at a glance; tap a mark to open the clue','Fix: files saved right after a restart were named in UTC']],
  ['2.3','2026-11-05','The Sign of the Swift Lens',['Live view asks for the next picture as soon as the last one arrives (shows fps)',
@@ -468,6 +472,17 @@ $('chron').innerHTML=CHRONICLES.map(c=>`<div style="margin-bottom:10px"><b>v${c[
  <ul style="margin:4px 0 0 18px;padding:0">${c[3].map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('');
 
 // ---------- workshop ----------
+// ---------- the Doctor's Report: each line is [name, value, 0 good / 1 watch / 2 trouble] ----------
+function health(){if(!$('health')||st.tempC==null)return;const up=st.uptime,d=Math.floor(up/86400),h=Math.floor(up%86400/3600),m=Math.floor(up%3600/60);
+ const usedPct=st.totalMB?Math.round(100-st.freeMB*100/st.totalMB):0;
+ const rows=[['Wi-Fi signal',st.rssi+' dBm'+(st.rssi>-60?' (strong)':st.rssi>-72?' (fair)':' (weak)'),st.rssi>-67?0:st.rssi>-78?1:2],
+  ['Chip temperature',st.tempC+' &deg;C',st.tempC<65?0:st.tempC<80?1:2],
+  ['Awake for',`${d}d ${h}h ${m}m`,up>600?0:1],
+  ['Free memory',`${st.heap} KB (lowest ${st.minHeap} KB, largest piece ${st.maxBlock} KB)`,st.minHeap>40?0:st.minHeap>20?1:2],
+  ['PSRAM free',(st.psram/1024).toFixed(1)+' MB',st.psram>1024?0:st.psram>256?1:2],
+  ['SD card',st.sd?(st.totalMB?`${usedPct}% used, ${(st.freeMB/1024).toFixed(1)} GB free`:st.freeMB+' MB free'):'missing!',!st.sd?2:usedPct<85?0:usedPct<95?1:2],
+  ['Restarts',`#${st.boots}, last: ${esc(st.reset)}`,/crash|watchdog|brownout/.test(st.reset)?2:0]];
+ $('health').innerHTML=rows.map(r=>`<tr><td><span class="lamp ${['lo','hi','rec'][r[2]]}"></span>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}
 function sys(){const up=st.uptime,d=Math.floor(up/86400),h=Math.floor(up%86400/3600),m=Math.floor(up%3600/60);
  $('sys').innerHTML=[['Firmware',st.fw],['Clock',st.time],['Awake for',`${d}d ${h}h ${m}m`],['SD card',st.sd?st.freeMB+' MB free':'missing!'],
  ['Wi-Fi signal',st.rssi+' dBm'],['Free memory',st.heap+' KB RAM, '+st.psram+' KB PSRAM']].map(r=>`<tr><td>${r[0]}</td><td>${esc(r[1])}</td></tr>`).join('')}

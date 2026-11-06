@@ -122,6 +122,7 @@ void flushEvents() {
   }
   if (live.sdOK && (!lastFree || millis() - lastFree > 30000)) {
     live.freeMB = (SD.totalBytes() - SD.usedBytes()) / 1048576;
+    live.totalMB = SD.totalBytes() / 1048576;
     lastFree = millis();
   }
   unlockSD();

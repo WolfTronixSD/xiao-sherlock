@@ -2,6 +2,11 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 2.8 (2026-11-05): The Doctor's Report
+- Health panel on The Scene: Wi-Fi signal, chip temperature, uptime, memory (now, lowest, largest piece), PSRAM, card use and restarts
+- Each line has a lamp: green good, amber watch, red trouble
+- Restarts are counted and the reason (power on, crash, watchdog, brownout...) is shown and written to the case log
+
 ## 2.7 (2026-11-05): The Tidy Lodger
 - Make room: when the card is fuller than 90% (adjustable), the oldest day is deleted, then the next, until there is room
 - Today and the case log are never touched; each clean-up is noted in the case log
