@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "2.3"
+#define FW_VERSION "2.5"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -27,6 +27,13 @@ struct Config {
   char webPass[33] = "";
   char tz[48] = "PST8PDT,M3.2.0,M11.1.0";
   int  cooldownSec = 10;
+  // schedule and phone presence
+  bool schedEn = false;
+  int  schedArm = 2300;     // HHMM
+  int  schedDisarm = 700;   // HHMM
+  bool homeEn = false;
+  char homeIp[16] = "";
+  int  homeAwayMin = 15;
   // camera
   int  frameSize = 0;  // set to FRAMESIZE_SVGA in buildFields()
   int  jpegQuality = 12;
@@ -85,6 +92,7 @@ struct LiveState {
   RadarTarget   radar[3] = {};
   volatile bool radarSeen = false;   // got frames from the radar
   volatile int  sonarCm = -1;
+  volatile int  phoneHome = -1;      // -1 not watched, 0 away, 1 home
   bool sdOK = false;
   uint32_t freeMB = 0;
   String pinWarning;
@@ -155,6 +163,9 @@ void telegramStart();
 bool telegramReady();
 void telegramAlert(const String &text, bool withPhoto, bool force);
 String telegramFindChat();
+
+// ---------- presence.cpp ----------
+void presenceStart();
 
 // ---------- web.cpp ----------
 void webStart();

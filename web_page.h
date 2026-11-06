@@ -39,6 +39,8 @@ nav button.on{background:var(--card);font-weight:bold;position:relative;top:1px}
 .meter{height:16px;border:1px solid var(--faded);border-radius:8px;background:#e9dcbc;position:relative;overflow:hidden}
 .meter i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#3e6b4a,#a8892f,#8e2a2a)}
 .meter b{position:absolute;top:-2px;bottom:-2px;width:3px;background:var(--red)}
+#micMeter{height:22px;cursor:ew-resize;touch-action:none}#micMeter b{width:5px;margin-left:-2px;box-shadow:0 0 0 1px #fff8}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .lamp{display:inline-block;width:12px;height:12px;border-radius:50%;background:#998;border:1px solid #554;vertical-align:middle;margin-right:6px}
 .lamp.hi{background:#e8b030;box-shadow:0 0 6px #f0c040}.lamp.lo{background:#3e6b4a}.lamp.rec{background:#c62828;box-shadow:0 0 6px #f44;animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.3}}
@@ -75,10 +77,16 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
 .kino h2{font-family:'IM Fell English SC',serif;font-weight:normal;margin:0 0 6px;font-size:20px}
 .kino img{width:100%;background:#000;display:block;filter:sepia(.2);min-height:120px}
 .kino input[type=range]{flex:1;accent-color:var(--red)}
+:root{--c-jpg:#a8792a;--c-avi:#8e2a2a;--c-wav:#5c3b7a}
+.chart{width:100%;display:block;background:#fffaf0;border:1px solid #cdb98c;border-radius:4px;margin:4px 0 10px;touch-action:manipulation}
+.grid2{display:grid;grid-template-columns:minmax(0,3fr) minmax(200px,2fr);gap:14px}@media(max-width:700px){.grid2{grid-template-columns:1fr}}
+.key{display:inline-block;width:12px;height:12px;border-radius:2px;margin:0 2px 0 8px;vertical-align:middle}
+.stat{background:#fffaf0;border:1px solid #cdb98c;border-radius:4px;padding:6px 10px;text-align:center;min-width:90px}.stat b{display:block;font-size:20px;font-family:'IM Fell English SC',serif}
 </style></head><body><div class="wrap">
 <header>
  <div class="plaque">221B</div>
  <div><h1>The Baker Street Irregular<br>Surveillance Society</h1><div class="quip" id="quip"></div></div>
+ <span class="small" id="homeChip" style="margin-left:auto"></span>
  <button id="seal" class="seal" onclick="toggleArm()">...</button>
 </header>
 <nav id="nav"></nav>
@@ -106,8 +114,8 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
   <div>
    <div class="card inst"><h2>The Instruments</h2>
     <div><b>The Listening Post</b> <span id="micTxt"></span></div>
-    <div class="meter"><i id="micBar"></i><b id="micThr"></b></div>
-    <div class="small">Red line = threshold. Clap, cough, or accuse someone loudly to test.</div>
+    <div class="meter" id="micMeter"><i id="micBar"></i><b id="micThr"></b></div>
+    <div class="small">Red line = threshold: drag it to change it (saved at once). Clap, cough, or accuse someone loudly to test.</div>
     <div style="margin-top:8px"><span class="lamp" id="recA"></span><span id="recATxt">Watson's pencil is idle</span></div>
     <div><span class="lamp" id="recV"></span><span id="recVTxt">The camera obscura rests</span></div>
     <div style="margin-top:8px"><b>Tripwires</b><div id="inputs"></div></div>
@@ -128,6 +136,19 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
 </section>
 
 <section class="tab" id="t-files">
+ <div class="card"><h2>&#128202; The Statistics</h2>
+  <div class="row" id="sumRow"></div>
+  <div class="small">Clues per day (last 30 days)</div><canvas id="chDays" class="chart" height="170"></canvas>
+  <div class="grid2">
+   <div><div class="small">By hour of day <select id="hDay" onchange="drawStats()"></select></div><canvas id="chHours" class="chart" height="140"></canvas></div>
+   <div><div class="small">By witness (sensor)</div><table id="srcTab"></table></div>
+  </div>
+  <div class="row small"><span class="key" style="background:var(--c-jpg)"></span>Photographs <span class="key" style="background:var(--c-avi)"></span>Moving pictures <span class="key" style="background:var(--c-wav)"></span>Recordings</div>
+ </div>
+ <div class="card"><h2>&#128336; The Timeline</h2>
+  <div class="row"><select id="tDay" onchange="loadTimeline()"></select><span class="small" id="tInfo">Tap a mark to open that clue.</span></div>
+  <canvas id="chTime" class="chart" height="120"></canvas>
+ </div>
  <div class="card"><h2>The Evidence Locker</h2>
   <div class="row">
    <select id="ftype" onchange="renderFiles()"><option value="">All evidence</option><option value=".jpg">Photographs</option><option value=".avi">Moving pictures</option><option value=".wav">Recordings</option><option value=".csv">Case books</option></select>
@@ -148,7 +169,7 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
  <div class="card"><h2>Instructions to Watson</h2>
   <div class="small">Every setting is kept on the device and survives a restart. Pins D8-D10 belong to the SD card and are not offered.</div></div>
  <div id="form"></div>
- <div class="card row"><button class="btn" onclick="saveSettings()">Seal and send the instructions</button><span class="small" id="saveMsg"></span></div>
+ <div class="card row"><button class="btn" id="sealBtn" disabled onclick="saveSettings()">Seal and send the instructions</button><span class="small" id="saveMsg"></span></div>
  <div class="card"><h2>The Telegram Boy</h2>
   <div class="small">1. In Telegram open <b>@BotFather</b>, send <b>/newbot</b>, pick a name, paste the token into "The Telegram Boy" section above, tick <i>Send Telegram alerts</i>, and press Seal and send.<br>
   2. Open your new bot in Telegram and send it any message (e.g. <i>hello</i>).<br>
@@ -197,16 +218,17 @@ const TABS=[['scene','The Scene'],['log','Case Log'],['files','Evidence Locker']
 $('nav').innerHTML=TABS.map(t=>`<button id="b-${t[0]}" onclick="show('${t[0]}')">${t[1]}</button>`).join('');
 let tab='scene';
 function show(t){tab=t;TABS.forEach(x=>{$('t-'+x[0]).classList.toggle('on',x[0]==t);$('b-'+x[0]).classList.toggle('on',x[0]==t)});
- if(t=='scene')setTimeout(snap,0);if(t=='log')loadLog();if(t=='files')loadFiles();if(t=='settings')loadSettings();try{localStorage.tab=t}catch(e){}}
+ if(t=='scene')setTimeout(snap,0);if(t=='log')loadLog();if(t=='files'){loadFiles();loadStats()}if(t=='settings')loadSettings();try{localStorage.tab=t}catch(e){}}
 try{if(localStorage.tab)tab=localStorage.tab}catch(e){}
 $('quip').textContent=pick(QUIPS);setInterval(()=>$('quip').textContent=pick(QUIPS),20000);
 
 // ---------- status / instruments ----------
 let st={},cfg={};
 async function status(){try{st=await (await api('/api/status')).json()}catch(e){return}
+ $('homeChip').textContent=st.phoneHome==1?'\u{1F4F1} Holmes is home':st.phoneHome==0?'\u{1F4F1} Holmes is out':'';
  const seal=$('seal');seal.textContent=st.armed?'The game is afoot!':'Holmes is off duty';seal.classList.toggle('off',!st.armed);
  const pct=v=>Math.max(0,Math.min(100,(v+90)/90*100));
- $('micBar').style.width=pct(st.mic)+'%';$('micThr').style.left=pct(st.soundDb)+'%';$('micTxt').textContent=st.mic+' dB';
+ $('micBar').style.width=pct(st.mic)+'%';if(thrDrag==null)$('micThr').style.left=pct(st.soundDb)+'%';$('micTxt').textContent=st.mic+' dB';
  $('recA').className='lamp'+(st.audioRec?' rec':'');$('recATxt').textContent=st.audioRec?'Watson is scribbling (recording audio)':"Watson's pencil is idle";
  $('recV').className='lamp'+(st.videoRec?' rec':'');$('recVTxt').textContent=st.videoRec?'The camera obscura whirrs (recording video)':'The camera obscura rests';
  $('inputs').innerHTML=st.inputs.filter(i=>i.en).map(i=>`<div><span class="lamp ${i.level==1?'hi':i.level==0?'lo':''}"></span>${esc(i.name)} <span class="small">${esc(i.pin)}: ${i.level==1?'HIGH':i.level==0?'LOW':'?'}</span></div>`).join('')||'<div class="small">None strung. See Instructions to Watson.</div>';
@@ -303,16 +325,81 @@ function renderFiles(){const t=$('ftype').value,l=files.filter(f=>!t||f[0].endsW
   <a class="btn plain" href="${u}&dl=1">Download</a><button class="btn red" onclick="del('${esc(f[0])}')">Burn</button></div></div>`}).join('')||'<div class="small">The locker is empty. Mrs. Hudson has been dusting.</div>'}
 async function del(n){if(!confirm('Burn '+n+'? This cannot be undone.'))return;try{await api('/api/delete?name='+encodeURIComponent(n),{method:'POST'});toast('Evidence destroyed. Very suspicious.');loadFiles()}catch(e){toast(e.message)}}
 
+// ---------- the loudness threshold: drag the red line on the meter, saved on release ----------
+let thrDrag=null;
+function thrAt(e){const r=$('micMeter').getBoundingClientRect();return Math.round(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*90-90)}
+function thrShow(v){$('micThr').style.left=(v+90)/90*100+'%';$('micTxt').textContent=(st.mic??'')+' dB, threshold '+v+' dB'}
+$('micMeter').addEventListener('pointerdown',e=>{$('micMeter').setPointerCapture(e.pointerId);thrDrag=thrAt(e);thrShow(thrDrag)});
+$('micMeter').addEventListener('pointermove',e=>{if(thrDrag==null)return;thrDrag=thrAt(e);thrShow(thrDrag)});
+$('micMeter').addEventListener('pointerup',async()=>{if(thrDrag==null)return;const v=thrDrag;
+ try{await api('/api/config',{method:'POST',body:JSON.stringify({soundDb:v})});st.soundDb=cfg.soundDb=v;
+  const f=$('f_soundDb');if(f){f.value=v;if(f.previousElementSibling)f.previousElementSibling.value=v}toast('Threshold set to '+v+' dB.')}
+ catch(e){toast('Failed: '+e.message)}thrDrag=null});
+$('micMeter').addEventListener('pointercancel',()=>thrDrag=null);
+
+// ---------- statistics and timeline ----------
+let stats=null,tFiles=[],tDayShown='',tMarks=[];
+const COL={jpg:'#a8792a',avi:'#8e2a2a',wav:'#5c3b7a'},TYPES=['jpg','avi','wav'];
+const dayTxt=d=>d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6);
+async function loadStats(){try{stats=await (await api('/api/stats')).json()}catch(e){return}
+ const ds=stats.days.map(x=>x.d).reverse(),opt=ds.map(d=>`<option value="${d}">${dayTxt(d)}</option>`).join('');
+ const keep=$('hDay').value;$('hDay').innerHTML='<option value="">all days</option>'+opt;$('hDay').value=keep;
+ const tk=$('tDay').value;$('tDay').innerHTML=opt||'<option value="">no dated evidence</option>';if(tk&&ds.includes(tk))$('tDay').value=tk;
+ drawStats();loadTimeline()}
+// a canvas sized to its box in CSS pixels, sharp on retina screens
+function prep(c){const r=window.devicePixelRatio||1,w=c.clientWidth,h=+c.getAttribute('height');c.width=w*r;c.height=h*r;c.style.height=h+'px';
+ const g=c.getContext('2d');g.setTransform(r,0,0,r,0,0);g.clearRect(0,0,w,h);return[g,w,h]}
+// stacked bars: rows = [{label, jpg, avi, wav}], a label on every n-th bar
+function bars(c,rows,every){const[g,W,H]=prep(c),L=30,B=18,T=6,n=Math.max(rows.length,1),bw=(W-L-4)/n,max=Math.max(1,...rows.map(r=>r.jpg+r.avi+r.wav));
+ g.font='10px Georgia';g.fillStyle='#6b5536';g.strokeStyle='#e0d0a8';g.textAlign='right';
+ for(let i=0;i<=4;i++){const v=Math.round(max*i/4),y=H-B-(H-B-T)*i/4;g.beginPath();g.moveTo(L,y);g.lineTo(W,y);g.stroke();g.fillText(v,L-4,y+3)}
+ g.textAlign='center';rows.forEach((r,i)=>{let y=H-B;const x=L+i*bw;TYPES.forEach(t=>{const h=(H-B-T)*r[t]/max;g.fillStyle=COL[t];g.fillRect(x+bw*.12,y-h,bw*.76,h);y-=h});
+  if(i%every==0){g.fillStyle='#6b5536';g.fillText(r.label,x+bw/2,H-5)}})}
+function drawStats(){if(!stats)return;const days=stats.days.slice(-30),tot=t=>stats.days.reduce((a,x)=>a+x[t],0);
+ $('sumRow').innerHTML=[['Clues',stats.total],['Photographs',tot('jpg')],['Moving pictures',tot('avi')],['Recordings',tot('wav')],['Days',stats.days.length],
+  ['Card used',(stats.mb/1024).toFixed(1)+' GB'],['Card free',(stats.freeMB/1024).toFixed(1)+' GB']].map(s=>`<div class="stat"><b>${s[1]}</b><span class="small">${s[0]}</span></div>`).join('');
+ bars($('chDays'),days.map(x=>({label:x.d.slice(6)+'/'+x.d.slice(4,6),jpg:x.jpg,avi:x.avi,wav:x.wav})),Math.ceil(days.length/10));
+ const hd=$('hDay').value,sel=hd?stats.days.filter(x=>x.d==hd):stats.days,hours=Array(24).fill(0),src={};
+ sel.forEach(x=>{x.h.forEach((v,i)=>hours[i]+=v);for(const k in x.s)src[k]=(src[k]||0)+x.s[k]});
+ // the hour counts cover every file, so split each bar by the share of each type
+ const all=sel.reduce((s,x)=>s+x.jpg+x.avi+x.wav,0)||1,share=t=>sel.reduce((s,x)=>s+x[t],0)/all;
+ bars($('chHours'),hours.map((v,i)=>({label:i,jpg:v*share('jpg'),avi:v*share('avi'),wav:v*share('wav')})),3);
+ const sum=Object.values(src).reduce((a,b)=>a+b,0)||1;
+ $('srcTab').innerHTML=Object.entries(src).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td><span class="kind k-${esc(k)}">${esc(k)}</span></td>
+  <td style="width:50%"><div class="meter" style="height:10px"><i style="width:${v/sum*100}%"></i></div></td><td>${v}</td></tr>`).join('')||'<tr><td class="small">No clues yet.</td></tr>'}
+async function loadTimeline(){const d=$('tDay').value;if(!d){tFiles=[];drawTimeline();return}
+ if(d!=tDayShown){try{tFiles=await (await api('/api/files?day='+d)).json();tDayShown=d}catch(e){$('tInfo').textContent='Could not load: '+e.message;return}}
+ drawTimeline()}
+const tSec=n=>(+n.slice(9,11))*3600+(+n.slice(11,13))*60+(+n.slice(13,15)),tType=n=>n.endsWith('.jpg')?'jpg':n.endsWith('.avi')?'avi':n.endsWith('.wav')?'wav':null;
+// one lane per type across 24 hours; every clue is a tick at its time
+function drawTimeline(){const[g,W,H]=prep($('chTime')),L=8,R=8,lane=(H-24)/3;tMarks=[];g.font='10px Georgia';g.textAlign='center';
+ for(let h=0;h<=24;h+=3){const x=L+(W-L-R)*h/24;g.strokeStyle='#e0d0a8';g.beginPath();g.moveTo(x,0);g.lineTo(x,H-16);g.stroke();g.fillStyle='#6b5536';g.fillText(h+':00',Math.min(W-16,Math.max(14,x)),H-4)}
+ tFiles.forEach(f=>{const t=tType(f[0]);if(!t||f[0][8]!='_')return;const x=L+(W-L-R)*tSec(f[0])/86400,y=4+TYPES.indexOf(t)*lane;
+  g.fillStyle=COL[t];g.fillRect(x-1,y,3,lane-4);tMarks.push([x,y+lane/2,f[0]])});
+ $('tInfo').textContent=tFiles.length+' clue(s) on this day. Tap a mark to open it.'}
+$('chTime').addEventListener('click',e=>{const r=$('chTime').getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;let best=null,bd=14;
+ tMarks.forEach(m=>{const dd=Math.hypot(m[0]-x,(m[1]-y)/3);if(dd<bd){bd=dd;best=m[2]}});if(!best)return;
+ $('tInfo').textContent=best;const u='/file?name='+encodeURIComponent(best);
+ if(best.endsWith('.avi'))play(best);else if(best.endsWith('.wav'))new Audio(u).play();else window.open(u)});
+window.addEventListener('resize',()=>{if(tab=='files'){drawStats();drawTimeline()}});
+
 // ---------- settings (built from the schema) ----------
 let schema=[],pins=[];
-async function loadSettings(){const s=await (await api('/api/schema')).json();pins=s.find(x=>x.pins).pins;schema=s.filter(x=>x.k);
- cfg=await (await api('/api/config')).json();zones=cfg.zones.filter(z=>z.w>0);
+// Saving is only allowed once schema and config have both loaded, or empty fields could overwrite the real settings
+let setLoaded=false;
+async function loadSettings(){setLoaded=false;$('sealBtn').disabled=true;let s,c;
+ for(let i=1;i<=4&&!c;i++){$('saveMsg').textContent=i>1?'Fetching the instructions again (try '+i+')...':'Fetching the instructions...';
+  try{s=await (await api('/api/schema')).json();c=await (await api('/api/config')).json()}catch(e){c=null;await new Promise(r=>setTimeout(r,1000*i))}}
+ if(!c||!s){$('saveMsg').innerHTML='Could not fetch the settings. <button class="btn plain" onclick="loadSettings()">Try again</button>';return}
+ pins=s.find(x=>x.pins).pins;schema=s.filter(x=>x.k);cfg=c;zones=cfg.zones.filter(z=>z.w>0);
  const groups={};schema.forEach(f=>(groups[f.g]=groups[f.g]||[]).push(f));
  $('form').innerHTML=Object.keys(groups).map(g=>{const s=SECTION.find(x=>g.includes(x[0]))||['','&#128269;',''];
   return `<fieldset><legend>${s[1]} ${esc(g)}</legend><div class="help">${s[2]}</div>${groups[g].map(field).join('')}</fieldset>`}).join('');
- const w=$('f_wifiSsid');if(w&&!w.value&&st.ssid)w.placeholder='now: '+st.ssid+' (built in at compile time)'}
+ const w=$('f_wifiSsid');if(w&&!w.value&&st.ssid)w.placeholder='now: '+st.ssid+' (built in at compile time)';
+ setLoaded=true;$('sealBtn').disabled=false;$('saveMsg').textContent=''}
 // icon and tagline per settings section (matched by a word in the section title)
 const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slippers, his violin and the master switch.'],
+ ['Schedule','&#128197;&#128373;&#65039;','Mrs. Hudson locks up at night and unlocks when you come home. She notices your phone.'],
  ['Telegraph Office','&#128225;&#9749;','How the house talks to the outside world. Leave Wi-Fi blank to keep the built-in network.'],
  ['Telegram Boy','&#128692;&#128232;','A lad on a bicycle who rushes news to your pocket. Faster than Royal Mail.'],
  ['Camera Obscura','&#128247;&#127913;','The all-seeing eye. Does not blink, does not sleep, does not take biscuits.'],
@@ -330,7 +417,8 @@ function field(f){const v=cfg[f.k],id='f_'+f.k;let input;
  else if(f.t=='e')input=`<select id="${id}">${f.o.split('|').map(o=>{const[k,l]=o.split(':');return `<option value="${k}" ${k==v?'selected':''}>${esc(l)}</option>`}).join('')}</select>`;
  else input=`<input type="${f.t=='w'?'password':'text'}" id="${id}" value="${esc(v)}">`;
  return `<div class="f"><label for="${id}">${esc(f.l)}</label>${input}</div>${f.h?`<div class="help">${esc(f.h)}</div>`:''}`}
-async function saveSettings(){const o={};schema.forEach(f=>{const e=$('f_'+f.k);o[f.k]=f.t=='b'?e.checked:(f.t=='s'||f.t=='w')?e.value:+e.value});
+async function saveSettings(){if(!setLoaded||!schema.length){toast('The settings have not loaded yet.');return}
+ const o={};schema.forEach(f=>{const e=$('f_'+f.k);if(!e)return;o[f.k]=f.t=='b'?e.checked:(f.t=='s'||f.t=='w')?e.value:+e.value});
  try{const r=await (await api('/api/config',{method:'POST',body:JSON.stringify(o)})).text();$('saveMsg').textContent='Sealed and delivered.';toast('Watson has the instructions.');
   if(r=='restart'&&confirm('Network settings changed. Restart now to use them?'))restart();status()}catch(e){$('saveMsg').textContent='Failed: '+e.message}}
 
@@ -361,6 +449,8 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['2.5','2026-11-05','The Adventure of the Red Line',['Drag the red threshold line on the Listening Post meter; it is saved at once','Settings retry loading; "Seal and send" waits until they have loaded, so empty settings can never be sent','The time zone is set at boot, before the first file is named']],
+ ['2.4','2026-11-05','The Statistician\'s Notebook',['Evidence Locker statistics: totals, clues per day, by hour and by sensor','The Timeline: a whole day at a glance; tap a mark to open the clue','Fix: files saved right after a restart were named in UTC']],
  ['2.3','2026-11-05','The Sign of the Swift Lens',['Live view asks for the next picture as soon as the last one arrives (shows fps)',
   'Places of interest can be drawn, moved and resized with a finger on iPhone','Sliders for sensitivity and number settings','Fix: network timeouts were 1000x too short (downloads cut off, Telegram could fail)','Fix: a locker with thousands of files no longer freezes the web page','Fix: Telegram can no longer trip the watchdog and reboot the board','Fix: video no longer starves the web page; a web watchdog restarts a stuck page','Evidence is kept in one folder per day, so saving stays fast with thousands of clues; SD bus 5x faster']],
  ['2.2','2026-11-05','The Adventure of the Pocket Telegraph',['Telegram alerts with photo, per sensor, with rate limit and "Find my chat ID"',

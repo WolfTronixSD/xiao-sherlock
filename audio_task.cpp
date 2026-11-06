@@ -41,7 +41,7 @@ static void wavWriter(void *arg) {
   if (f) { f.write(h, 44); f.write((uint8_t *)job->buf, bytes); f.close(); }
   unlockSD();
   logEvent(ok ? "saved" : "error", "microphone",
-           String(ok ? "audio " : "could not save ") + job->path.substring(5) + " (" + String(job->samples / (float)SAMPLE_RATE, 1) + " s)");
+           String(ok ? "audio " : "could not save ") + job->path.substring(job->path.lastIndexOf('/') + 1) + " (" + String(job->samples / (float)SAMPLE_RATE, 1) + " s)");
   free(job->buf);
   delete job;
   vTaskDelete(nullptr);

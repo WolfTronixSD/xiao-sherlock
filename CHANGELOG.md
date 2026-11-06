@@ -2,6 +2,16 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 2.5 (2026-11-05): The Adventure of the Red Line
+- Listening Post: drag the red threshold line on the meter; it is saved at once
+- Settings retry loading and "Seal and send" stays disabled until they have loaded (no more overwriting with empty settings)
+- The time zone is applied at boot, before the first file is saved
+
+## 2.4 (2026-11-05): The Statistician's Notebook
+- Evidence Locker statistics: totals, clues per day (last 30 days), by hour of day and by sensor
+- The Timeline: one day as a 24-hour strip of photos, videos and recordings; tap a mark to open it
+- Fix: files saved right after a restart were named in UTC instead of local time
+
 ## 2.3 (2026-11-05): The Sign of the Swift Lens
 - Low-latency live view: the next picture is requested as soon as the last one arrives (fps shown)
 - Touch zone editor: draw, move and resize places of interest with a finger on iPhone

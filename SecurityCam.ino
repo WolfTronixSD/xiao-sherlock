@@ -49,6 +49,10 @@ void setup() {
   Serial.println("\n=== 221B Baker Street security recorder " FW_VERSION " ===");
   buildFields();
   loadConfig();
+  // The clock survives a software restart, so set the time zone now, not only when Wi-Fi is up,
+  // or files saved right after a restart get UTC names.
+  setenv("TZ", cfg.tz, 1);
+  tzset();
 
   if (!cameraInit()) Serial.println("Camera init FAILED");
   if (mountSD()) Serial.printf("SD card OK, %llu MB\n", SD.cardSize() / 1048576);

@@ -6,6 +6,7 @@
 #include <ArduinoJson.h>
 #include "ff.h"
 #include <algorithm>
+#include <map>
 #include "web_page.h"
 
 static WebServer server(80);
@@ -47,6 +48,7 @@ static void handleStatus() {
   d["heap"] = ESP.getFreeHeap() / 1024;
   d["psram"] = ESP.getFreePsram() / 1024;
   d["fw"] = FW_VERSION;
+  d["phoneHome"] = live.phoneHome;
   d["warn"] = live.pinWarning;
   JsonArray in = d["inputs"].to<JsonArray>();
   for (int i = 0; i < MAX_INPUTS; i++) {
@@ -127,21 +129,25 @@ template <typename F> static void listSec(F fn) {
   }
 }
 
-// The newest MAX_LIST files (names start with the date, so the largest names are the newest)
-#define MAX_LIST 600
+// The newest files (names start with the date, so the largest names are the newest):
+// 600 for the locker, or up to MAX_LIST of one day with ?day=YYYYMMDD (for the timeline)
+#define MAX_LIST 2000
 struct Entry { char name[64]; uint32_t size; };
 
 static void handleFiles() {
   static Entry *list = (Entry *)ps_malloc(MAX_LIST * sizeof(Entry));
   if (!list) { server.send(500, "text/plain", "No memory"); return; }
+  String day = server.arg("day");
+  int limit = day.length() == 8 ? MAX_LIST : 600;
   int n = 0, oldest = 0, total = 0;
   lockSD();
   listSec([&](const char *, const char *name, uint32_t size) {
+    if (day.length() == 8 && strncmp(name, day.c_str(), 8)) return true;
     total++;
-    if (n < MAX_LIST) { strlcpy(list[n].name, name, sizeof(list[n].name)); list[n++].size = size; }
+    if (n < limit) { strlcpy(list[n].name, name, sizeof(list[n].name)); list[n++].size = size; }
     else if (strcmp(name, list[oldest].name) > 0) { strlcpy(list[oldest].name, name, sizeof(list[oldest].name)); list[oldest].size = size; }
     else return true;
-    if (n == MAX_LIST)
+    if (n == limit)
       for (int i = 0; i < n; i++) if (strcmp(list[i].name, list[oldest].name) < 0) oldest = i;
     return true;
   });
@@ -155,6 +161,55 @@ static void handleFiles() {
   }
   s += "]";
   server.sendHeader("X-Total-Files", String(total));
+  sendJson(s);
+}
+
+// /api/stats: per day the number of photos, videos and recordings, their size, clues per hour
+// and per sensor. Worked out from the file names (YYYYMMDD_HHMMSS_source-name...), so it is quick.
+struct DayStat { uint16_t jpg = 0, avi = 0, wav = 0, other = 0; uint64_t bytes = 0; uint16_t hours[24] = {}; std::map<String, uint16_t> src; };
+
+static void handleStats() {
+  std::map<String, DayStat> days;
+  uint32_t total = 0;
+  uint64_t bytes = 0;
+  lockSD();
+  listSec([&](const char *, const char *name, uint32_t size) {
+    total++;
+    bytes += size;
+    size_t len = strlen(name);
+    if (len < 17 || name[8] != '_' || name[15] != '_') return true;  // the case log and other odd names
+    for (int i : {0, 1, 2, 3, 4, 5, 6, 7, 9, 10}) if (!isdigit((unsigned char)name[i])) return true;
+    DayStat &d = days[String(name).substring(0, 8)];
+    const char *ext = strrchr(name, '.');
+    if (ext && !strcmp(ext, ".jpg")) d.jpg++;
+    else if (ext && !strcmp(ext, ".avi")) d.avi++;
+    else if (ext && !strcmp(ext, ".wav")) d.wav++;
+    else d.other++;
+    d.bytes += size;
+    int h = (name[9] - '0') * 10 + name[10] - '0';
+    if (h < 24) d.hours[h]++;
+    const char *tag = name + 16, *end = strpbrk(tag, "-_.");
+    d.src[String(tag).substring(0, end ? end - tag : strlen(tag))]++;
+    return true;
+  });
+  unlockSD();
+  JsonDocument doc;
+  doc["total"] = total;
+  doc["mb"] = (uint32_t)(bytes / 1048576);
+  doc["freeMB"] = live.freeMB;
+  JsonArray a = doc["days"].to<JsonArray>();
+  for (auto &kv : days) {
+    DayStat &d = kv.second;
+    JsonObject o = a.add<JsonObject>();
+    o["d"] = kv.first; o["jpg"] = d.jpg; o["avi"] = d.avi; o["wav"] = d.wav; o["o"] = d.other;
+    o["mb"] = (float)(d.bytes / 1048576.0);
+    JsonArray h = o["h"].to<JsonArray>();
+    for (int i = 0; i < 24; i++) h.add(d.hours[i]);
+    JsonObject s = o["s"].to<JsonObject>();
+    for (auto &x : d.src) s[x.first] = x.second;
+  }
+  String s;
+  serializeJson(doc, s);
   sendJson(s);
 }
 
@@ -290,6 +345,7 @@ void webStart() {
   ROUTE("/api/tg/findchat", HTTP_POST, server.send(200, "text/plain", telegramFindChat()));
   ROUTE("/api/motiongrid", HTTP_GET, sendJson(motionGridJson()));
   ROUTE("/api/files", HTTP_GET, handleFiles());
+  ROUTE("/api/stats", HTTP_GET, handleStats());
   ROUTE("/api/delete", HTTP_POST, handleDelete());
   ROUTE("/api/deletebulk", HTTP_POST, handleDeleteBulk());
   ROUTE("/api/restart", HTTP_POST, { server.send(200, "text/plain", "ok"); delay(300); ESP.restart(); });
