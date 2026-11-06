@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "2.6"
+#define FW_VERSION "2.7"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -27,6 +27,8 @@ struct Config {
   char webPass[33] = "";
   char tz[48] = "PST8PDT,M3.2.0,M11.1.0";
   int  cooldownSec = 10;
+  bool autoClean = true;
+  int  cleanPct = 90;       // delete the oldest day when the card is fuller than this
   // schedule and phone presence
   bool schedEn = false;
   int  schedArm = 2300;     // HHMM
@@ -139,6 +141,7 @@ void flushEvents();
 String eventsJson(int max);
 void raiseEvent(Source src, const String &who, const String &detail);
 void setArmed(bool on, const String &who, const String &why);
+void janitorStart();
 String sensorSnapshot();
 
 // ---------- camera_task.cpp ----------
@@ -169,5 +172,7 @@ String telegramFindChat();
 void presenceStart();
 
 // ---------- web.cpp ----------
+int deleteDay(const String &day, bool keepLog);
+String oldestDay();
 void webStart();
 void webLoop();

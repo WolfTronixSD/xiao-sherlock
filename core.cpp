@@ -163,6 +163,31 @@ void setArmed(bool on, const String &who, const String &why) {
   logEvent("config", who, String(on ? "ARMED - the game is afoot" : "disarmed - Holmes is off duty") + (why.length() ? ", " + why : ""));
 }
 
+// ---------- the janitor ----------
+// Once a minute: if the card is fuller than cleanPct, delete the oldest day (never today), and repeat.
+static void janitorTask(void *) {
+  for (;;) {
+    vTaskDelay(pdMS_TO_TICKS(60000));
+    if (!cfg.autoClean || !live.sdOK || !timeValid()) continue;
+    for (int i = 0; i < 30; i++) {  // at most 30 days per round
+      lockSD();
+      uint64_t total = SD.totalBytes(), used = SD.usedBytes();
+      unlockSD();
+      if (!total || used * 100 < total * (uint64_t)cfg.cleanPct) break;
+      String day = oldestDay();
+      if (!day.length()) break;
+      int n = deleteDay(day, true);
+      logEvent("deleted", "janitor", String("card ") + (int)(used * 100 / total) + "% full - cleared " + day + " (" + n + " file(s))");
+      if (!n) break;
+    }
+    lockSD();
+    if (live.sdOK) live.freeMB = (SD.totalBytes() - SD.usedBytes()) / 1048576;
+    unlockSD();
+  }
+}
+
+void janitorStart() { xTaskCreatePinnedToCore(janitorTask, "janitor", 6144, nullptr, 1, nullptr, 0); }
+
 // ---------- event dispatcher ----------
 static uint32_t lastFire[SRC_COUNT] = {};
 

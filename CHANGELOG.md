@@ -2,6 +2,10 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 2.7 (2026-11-05): The Tidy Lodger
+- Make room: when the card is fuller than 90% (adjustable), the oldest day is deleted, then the next, until there is room
+- Today and the case log are never touched; each clean-up is noted in the case log
+
 ## 2.6 (2026-11-05): Mrs Hudson's Timetable
 - Arm and disarm on a daily schedule (acts only at that minute, so the button still wins)
 - Watches for your phone on the Wi-Fi: arms when it leaves, disarms when it comes back

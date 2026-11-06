@@ -273,12 +273,10 @@ static void handleDelete() {
   server.send(ok ? 200 : 404, "text/plain", ok ? "Destroyed the evidence" : "No such clue");
 }
 
-// /api/deletebulk?day=YYYYMMDD  or  ?day=all  (&keeplog=0 to also delete the case log)
-static void handleDeleteBulk() {
-  String day = server.arg("day");
+// Delete one day's evidence (day "all" = everything), in batches so thousands of files need little
+// memory, and one file at a time so recording can carry on. Returns the number of files deleted.
+int deleteDay(const String &day, bool keepLog) {
   bool all = day == "all";
-  if (!all && (day.length() != 8 || day.toInt() < 20000101)) { server.send(400, "text/plain", "Bad day"); return; }
-  bool keepLog = server.arg("keeplog") != "0";
   int n = 0;
   std::vector<String> dirs;  // day folders to remove once emptied
   for (int round = 0; round < 1000; round++) {  // in batches, so thousands of files need little memory
@@ -306,6 +304,30 @@ static void handleDeleteBulk() {
   lockSD();
   for (auto &dname : dirs) SD.rmdir(String(SEC_DIR "/") + dname);
   unlockSD();
+  return n;
+}
+
+// The oldest day that has evidence, other than today ("" if there is none)
+String oldestDay() {
+  String today = timeValid() ? stamp().substring(0, 8) : "";
+  char best[9] = "";
+  lockSD();
+  listSec([&](const char *, const char *name, uint32_t) {
+    if (strlen(name) < 9 || name[8] != '_') return true;
+    for (int i = 0; i < 8; i++) if (!isdigit((unsigned char)name[i])) return true;
+    if ((!best[0] || strncmp(name, best, 8) < 0) && strncmp(name, today.c_str(), 8)) strlcpy(best, name, 9);
+    return true;
+  });
+  unlockSD();
+  return best;
+}
+
+// /api/deletebulk?day=YYYYMMDD  or  ?day=all  (&keeplog=0 to also delete the case log)
+static void handleDeleteBulk() {
+  String day = server.arg("day");
+  bool all = day == "all";
+  if (!all && (day.length() != 8 || day.toInt() < 20000101)) { server.send(400, "text/plain", "Bad day"); return; }
+  int n = deleteDay(day, server.arg("keeplog") != "0");
   logEvent("deleted", "web", String(n) + " file(s) " + (all ? "- everything" : "from " + day));
   server.send(200, "text/plain", String(n));
 }

@@ -66,6 +66,9 @@ void buildFields() {
   add(g, "armed", "Armed (the game is afoot)", 'b', &cfg.armed);
   add(g, "cooldownSec", "Cooldown between events of the same kind (s)", 'i', &cfg.cooldownSec, 0, 3600, nullptr,
       "Stops one door slam from filling the card with 400 photos.");
+  add(g, "autoClean", "Make room: delete the oldest day when the card is full", 'b', &cfg.autoClean);
+  add(g, "cleanPct", "Card counts as full above (%)", 'i', &cfg.cleanPct, 50, 99, nullptr,
+      "Whole days go, oldest first, until the card is below this again. Today and the case log are never touched.");
   add(g, "tz", "Time zone (POSIX TZ string)", 's', cfg.tz, 0, sizeof(cfg.tz), nullptr,
       "Pacific: PST8PDT,M3.2.0,M11.1.0  Central Europe: CET-1CEST,M3.5.0,M10.5.0/3  UTC: UTC0");
 
