@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "2.5"
+#define FW_VERSION "2.6"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -138,6 +138,7 @@ void logEvent(const String &kind, const String &who, const String &detail);
 void flushEvents();
 String eventsJson(int max);
 void raiseEvent(Source src, const String &who, const String &detail);
+void setArmed(bool on, const String &who, const String &why);
 String sensorSnapshot();
 
 // ---------- camera_task.cpp ----------

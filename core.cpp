@@ -156,6 +156,13 @@ String sensorSnapshot() {
   return s;
 }
 
+// Arm or disarm, save it and say why in the case log (web button, timetable or phone)
+void setArmed(bool on, const String &who, const String &why) {
+  cfg.armed = on;
+  saveConfig();
+  logEvent("config", who, String(on ? "ARMED - the game is afoot" : "disarmed - Holmes is off duty") + (why.length() ? ", " + why : ""));
+}
+
 // ---------- event dispatcher ----------
 static uint32_t lastFire[SRC_COUNT] = {};
 

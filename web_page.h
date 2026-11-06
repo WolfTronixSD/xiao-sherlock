@@ -449,6 +449,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['2.6','2026-11-05','Mrs Hudson's Timetable',['Arm and disarm on a daily schedule; the button still wins until the next scheduled minute','Watches for your phone on the Wi-Fi: arms when it leaves, disarms when it comes back','The morning disarm is skipped while the phone is out']],
  ['2.5','2026-11-05','The Adventure of the Red Line',['Drag the red threshold line on the Listening Post meter; it is saved at once','Settings retry loading; "Seal and send" waits until they have loaded, so empty settings can never be sent','The time zone is set at boot, before the first file is named']],
  ['2.4','2026-11-05','The Statistician\'s Notebook',['Evidence Locker statistics: totals, clues per day, by hour and by sensor','The Timeline: a whole day at a glance; tap a mark to open the clue','Fix: files saved right after a restart were named in UTC']],
  ['2.3','2026-11-05','The Sign of the Swift Lens',['Live view asks for the next picture as soon as the last one arrives (shows fps)',

@@ -65,6 +65,7 @@ void setup() {
   audioStart();
   sensorsStart();
   telegramStart();
+  presenceStart();
   logEvent("start", "Holmes", String("on duty, ") + (cfg.armed ? "ARMED" : "disarmed") + ", firmware " FW_VERSION);
 }
 

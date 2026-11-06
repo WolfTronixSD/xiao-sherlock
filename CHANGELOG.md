@@ -2,6 +2,11 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 2.6 (2026-11-05): Mrs Hudson's Timetable
+- Arm and disarm on a daily schedule (acts only at that minute, so the button still wins)
+- Watches for your phone on the Wi-Fi: arms when it leaves, disarms when it comes back
+- The morning disarm is skipped while the phone is out; every change is noted in the case log
+
 ## 2.5 (2026-11-05): The Adventure of the Red Line
 - Listening Post: drag the red threshold line on the meter; it is saved at once
 - Settings retry loading and "Seal and send" stays disabled until they have loaded (no more overwriting with empty settings)

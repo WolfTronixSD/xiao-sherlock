@@ -91,9 +91,7 @@ static void handleSaveConfig() {
 }
 
 static void handleArm() {
-  cfg.armed = server.arg("on") == "1";
-  saveConfig();
-  logEvent("config", "web", cfg.armed ? "ARMED - the game is afoot" : "disarmed - Holmes is off duty");
+  setArmed(server.arg("on") == "1", "web", "");
   server.send(200, "text/plain", cfg.armed ? "1" : "0");
 }
 

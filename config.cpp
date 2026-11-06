@@ -69,6 +69,17 @@ void buildFields() {
   add(g, "tz", "Time zone (POSIX TZ string)", 's', cfg.tz, 0, sizeof(cfg.tz), nullptr,
       "Pacific: PST8PDT,M3.2.0,M11.1.0  Central Europe: CET-1CEST,M3.5.0,M10.5.0/3  UTC: UTC0");
 
+  g = "Mrs Hudson's Timetable (schedule & phone)";
+  add(g, "schedEn", "Arm and disarm on a daily timetable", 'b', &cfg.schedEn);
+  add(g, "schedArm", "Arm at (HHMM, 2300 = 11 pm)", 'i', &cfg.schedArm, 0, 2359);
+  add(g, "schedDisarm", "Disarm at (HHMM, 0700 = 7 am)", 'i', &cfg.schedDisarm, 0, 2359, nullptr,
+      "Acts only at that minute, so arming by hand still works. The morning disarm is skipped while your phone is out.");
+  add(g, "homeEn", "Watch for my phone on the Wi-Fi", 'b', &cfg.homeEn);
+  add(g, "homeIp", "Phone IP address", 's', cfg.homeIp, 0, sizeof(cfg.homeIp), nullptr,
+      "Give the phone a fixed address in your router (and on iPhone turn off Private Wi-Fi Address for this network). Arms when the phone leaves, disarms when it comes back.");
+  add(g, "homeAwayMin", "Call it 'out' after no answer for (min)", 'i', &cfg.homeAwayMin, 2, 120, nullptr,
+      "Phones doze on Wi-Fi; 15 minutes avoids false alarms.");
+
   g = "Telegraph Office (Wi-Fi & access)";
   add(g, "wifiSsid", "Wi-Fi name (2.4 GHz)", 's', cfg.wifiSsid, 0, sizeof(cfg.wifiSsid));
   add(g, "wifiPass", "Wi-Fi password", 'w', cfg.wifiPass, 0, sizeof(cfg.wifiPass));
