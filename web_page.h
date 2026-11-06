@@ -254,7 +254,8 @@ $('quip').textContent=pick(QUIPS);setInterval(()=>$('quip').textContent=pick(QUI
 
 // ---------- status / instruments ----------
 let st={},cfg={};
-async function status(){try{st=await (await api('/api/status')).json()}catch(e){return}
+let stBusy=false,stLast=0;
+async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=await (await api('/api/status')).json()}catch(e){return}finally{stBusy=false}
  $('homeChip').textContent=st.phoneHome==1?'\u{1F4F1} Holmes is home':st.phoneHome==0?'\u{1F4F1} Holmes is out':'';
  const seal=$('seal');seal.textContent=st.armed?'The game is afoot!':'Holmes is off duty';seal.classList.toggle('off',!st.armed);
  const pct=v=>Math.max(0,Math.min(100,(v+90)/90*100));
@@ -508,6 +509,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.5','2026-11-06','The Adventure of the Singing Piezo',['Alarm bell: new Piezo wail and Piezo beeps sounds, so a passive piezo really sounds instead of clicking','Tripwire debounce is now a setting (Baker Street HQ), and pins are read every 5 ms','The Scene refreshes its lamps twice a second']],
  ['3.4','2026-11-06','The Case of the Silent Bell',['Fix: the alarm bell on D1 did nothing, because the camp wake pin (also D1) was reset to an input even with camp mode off','Fix: a tripwire showed ? after saving settings until the pin changed','Warning when the camp wake pin is also the alarm bell or IR lamp pin']],
  ['3.3','2026-11-06','The Page That Would Not Starve',['The web page runs in its own task on the other processor core, so it stays quick while the camera records video and photos non-stop']],
  ['3.2','2026-11-06','The Return of the Wireless',['On the hotspot, the house keeps trying your Wi-Fi once a minute and switches back by itself (never while a phone is on the hotspot)','The firmware upload refuses the 8 MB full USB image and stops at the first bad block instead of hanging']],
@@ -562,6 +564,6 @@ async function restart(){if(!confirm('Restart the device?'))return;try{await api
 
 // ---------- go ----------
 (async()=>{show(tab);await status();try{cfg=await (await api('/api/config')).json();zones=cfg.zones.filter(z=>z.w>0);renderZones()}catch(e){}
- snap();setInterval(status,1000);setInterval(snap,3000);setInterval(()=>{loadGrid().then(paint)},1000);setInterval(()=>{if(tab=='log')loadLog()},4000);
+ snap();setInterval(()=>{if(tab=='scene'||Date.now()-stLast>=1000)status()},500);setInterval(snap,3000);setInterval(()=>{loadGrid().then(paint)},1000);setInterval(()=>{if(tab=='log')loadLog()},4000);
  window.addEventListener('resize',paint)})();
 </script></body></html>)rawliteral";

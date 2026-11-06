@@ -2,6 +2,11 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.5 (2026-11-06): The Adventure of the Singing Piezo
+- Alarm bell: "Piezo wail" and "Piezo beeps" sounds drive a passive piezo with a tone (LEDC), so it sounds instead of clicking.
+- Tripwire debounce is adjustable (Baker Street HQ, default 50 ms) and the pins are read every 5 ms.
+- The Scene polls the status twice a second, skipping a poll while the last one is still loading.
+
 ## 3.4 (2026-11-06): The Case of the Silent Bell
 - Fix: an alarm bell (or IR lamp) on D1 did nothing, because the camp wake pin (default D1) was set to an input at boot even with camp mode off
 - Fix: tripwires showed "?" after settings were saved, until the pin changed

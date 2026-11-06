@@ -66,6 +66,7 @@ static void setupPins() {
   if (cfg.sirenPin >= 0) { digitalWrite(cfg.sirenPin, cfg.sirenActiveLow ? HIGH : LOW); pinMode(cfg.sirenPin, OUTPUT); }
   if (cfg.campEn && cfg.campPin >= 0 && (cfg.campPin == cfg.sirenPin || cfg.campPin == cfg.irPin))
     warn += "Camp wake pin " + pinName(cfg.campPin) + " is also an output (alarm bell or IR lamp): pick another wake pin. ";
+  bellPinsChanged();
   live.pinWarning = warn;
   if (warn.length()) logEvent("warning", "pins", warn);
 }
@@ -78,7 +79,7 @@ static void pollInputs() {
     if (!in.en) { stable[i] = last[i] = -1; continue; }
     int v = digitalRead(in.pin);
     if (v != last[i]) { last[i] = v; changedAt[i] = millis(); continue; }
-    if (v == stable[i] || millis() - changedAt[i] < 50) continue;  // 50 ms debounce
+    if (v == stable[i] || millis() - changedAt[i] < (uint32_t)cfg.debounceMs) continue;
     int prev = stable[i];
     stable[i] = live.inputLevel[i] = v;
     if (prev < 0) continue;  // first reading after enabling
@@ -149,7 +150,7 @@ static void sensorTask(void *) {
     pollInputs();
     pollRadar();
     pollSonar();
-    delay(10);
+    delay(5);
   }
 }
 
