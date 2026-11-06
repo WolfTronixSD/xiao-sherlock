@@ -29,13 +29,46 @@ void sirenStop(const String &why) {
   if (was) logEvent("siren", "alarm bell", "silenced: " + why);
 }
 
+// A passive piezo only clicks when a pin is switched on and off, so styles 3 and 4 drive it with a
+// square-wave tone (LEDC). The pin is attached to LEDC only while it sounds.
+static volatile bool bellReset = false;
+static int tonePin = -1;
+void bellPinsChanged() { bellReset = true; }
+
+static void toneOff() {
+  if (tonePin < 0) return;
+  ledcDetach(tonePin);
+  pinMode(tonePin, OUTPUT);
+  tonePin = -1;
+}
+
 static void bellTick() {
   bool on = false;
+  uint32_t t = millis();
   if (live.siren) {
-    if ((int32_t)(millis() - bellUntil) >= 0) sirenStop("time is up");
-    else on = cfg.sirenStyle == 0 ? true : cfg.sirenStyle == 1 ? (millis() / 500) % 2 == 0 : (millis() / 150) % 2 == 0;
+    if ((int32_t)(t - bellUntil) >= 0) sirenStop("time is up");
+    else on = cfg.sirenStyle == 0 ? true : cfg.sirenStyle == 1 ? (t / 500) % 2 == 0 : cfg.sirenStyle == 2 ? (t / 150) % 2 == 0 : true;
   }
-  if (cfg.sirenPin >= 0) digitalWrite(cfg.sirenPin, on != cfg.sirenActiveLow ? HIGH : LOW);
+  if (bellReset) { bellReset = false; tonePin = -1; }  // pinMode() in setupPins already released LEDC
+  bool piezo = cfg.sirenStyle == 3 || cfg.sirenStyle == 4;
+  if (piezo && on && cfg.sirenPin >= 0) {
+    uint32_t hz;
+    if (cfg.sirenStyle == 3) {  // wail: sweep 1800 -> 3600 -> 1800 Hz every 1.6 s
+      uint32_t ph = t % 1600;
+      hz = 1800 + (ph < 800 ? ph : 1600 - ph) * 9 / 4;
+    } else {                    // beeps: 2.7 kHz (a typical piezo's loudest pitch), 200 ms on, 200 ms off
+      hz = (t / 200) % 2 == 0 ? 2700 : 0;
+    }
+    if (tonePin != cfg.sirenPin) {
+      toneOff();
+      if (!ledcAttach(cfg.sirenPin, 2700, 8)) return;
+      tonePin = cfg.sirenPin;
+    }
+    ledcWriteTone(tonePin, hz);
+    return;
+  }
+  toneOff();
+  if (cfg.sirenPin >= 0) digitalWrite(cfg.sirenPin, (piezo ? false : on != cfg.sirenActiveLow) ? HIGH : LOW);
 }
 
 // ---------- the night watch ----------

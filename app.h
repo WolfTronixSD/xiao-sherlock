@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.4"
+#define FW_VERSION "3.5"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -27,6 +27,7 @@ struct Config {
   char webPass[33] = "";
   char tz[48] = "PST8PDT,M3.2.0,M11.1.0";
   int  cooldownSec = 10;
+  int  debounceMs = 50;     // a tripwire pin must hold its new level this long
   bool autoClean = true;
   int  cleanPct = 90;       // delete the oldest day when the card is fuller than this
   // schedule and phone presence
@@ -91,7 +92,7 @@ struct Config {
   int  sirenPin = -1;
   bool sirenActiveLow = false;
   int  sirenSec = 10;
-  int  sirenStyle = 1;      // 0 steady, 1 slow beep, 2 fast blink
+  int  sirenStyle = 1;      // 0 steady, 1 slow beep, 2 fast blink, 3 piezo wail, 4 piezo beeps
   // MQTT / Home Assistant
   bool mqttEn = false;
   char mqttHost[48] = "";
@@ -219,6 +220,7 @@ void outputsStart();
 void outputsApplyConfig();
 void sirenSound(int seconds, const String &why);
 void sirenStop(const String &why);
+void bellPinsChanged();  // sensors.cpp re-set the output pins
 void mqttEvent(const String &kind, const String &who, const String &detail);
 
 // ---------- camp.cpp (camp mode and Meshtastic) ----------

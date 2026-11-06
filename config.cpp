@@ -67,6 +67,8 @@ void buildFields() {
   add(g, "armed", "Armed (the game is afoot)", 'b', &cfg.armed);
   add(g, "cooldownSec", "Cooldown between events of the same kind (s)", 'i', &cfg.cooldownSec, 0, 3600, nullptr,
       "Stops one door slam from filling the card with 400 photos.");
+  add(g, "debounceMs", "Tripwire debounce (ms)", 'i', &cfg.debounceMs, 0, 1000, nullptr,
+      "How long a pin must stay at its new level before it counts. Lower reacts faster (pins are read every 5 ms); raise it if a bouncy switch fires twice.");
   add(g, "autoClean", "Make room: delete the oldest day when the card is full", 'b', &cfg.autoClean);
   add(g, "cleanPct", "Card counts as full above (%)", 'i', &cfg.cleanPct, 50, 99, nullptr,
       "Whole days go, oldest first, until the card is below this again. Today and the case log are never touched.");
@@ -169,7 +171,7 @@ void buildFields() {
       "A buzzer or LED can hang on the pin with a resistor; a real siren needs a transistor, MOSFET or relay module. Tick Ring the alarm bell under each sensor that should ring it.");
   add(g, "sirenActiveLow", "Pin goes LOW to ring (many relay boards)", 'b', &cfg.sirenActiveLow);
   add(g, "sirenSec", "Ring for (s)", 'i', &cfg.sirenSec, 1, 300);
-  add(g, "sirenStyle", "Sound", 'e', &cfg.sirenStyle, 0, 0, "0:Steady|1:Slow beep|2:Fast blink");
+  add(g, "sirenStyle", "Sound", 'e', &cfg.sirenStyle, 0, 0, "0:Steady|1:Slow beep|2:Fast blink|3:Piezo wail (passive piezo)|4:Piezo beeps (passive piezo)");
 
   g = "The Diogenes Club (MQTT & Home Assistant)";
   add(g, "mqttEn", "Report to an MQTT broker", 'b', &cfg.mqttEn);
