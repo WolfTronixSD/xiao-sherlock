@@ -508,6 +508,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.4','2026-11-06','The Case of the Silent Bell',['Fix: the alarm bell on D1 did nothing, because the camp wake pin (also D1) was reset to an input even with camp mode off','Fix: a tripwire showed ? after saving settings until the pin changed','Warning when the camp wake pin is also the alarm bell or IR lamp pin']],
  ['3.3','2026-11-06','The Page That Would Not Starve',['The web page runs in its own task on the other processor core, so it stays quick while the camera records video and photos non-stop']],
  ['3.2','2026-11-06','The Return of the Wireless',['On the hotspot, the house keeps trying your Wi-Fi once a minute and switches back by itself (never while a phone is on the hotspot)','The firmware upload refuses the 8 MB full USB image and stops at the first bad block instead of hanging']],
  ['3.1','2026-11-06','A Study in Scarlet (and Green, and Blue)',['Instructions to Watson: a big coloured tile per section to jump straight to it, with a green dot when it is switched on','Each section has its own colour, a big icon, an ON/off badge, opens and closes with a tap, and has its own Seal and send button','Back-to-the-tiles button in the corner']],

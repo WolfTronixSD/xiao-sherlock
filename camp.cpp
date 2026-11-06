@@ -148,7 +148,9 @@ static void reportIntruder() {
 }
 
 static void campTask(void *) {
-  if (cfg.campPin >= 0) pinMode(cfg.campPin, cfg.campLevel ? INPUT_PULLDOWN : INPUT_PULLUP);
+  // only claim the wake pin in camp mode: otherwise D1 may be the alarm bell or a tripwire
+  if (cfg.campEn && cfg.campPin >= 0 && cfg.campPin != cfg.sirenPin && cfg.campPin != cfg.irPin)
+    pinMode(cfg.campPin, cfg.campLevel ? INPUT_PULLDOWN : INPUT_PULLUP);
   uint32_t awakeMs = cfg.campAwakeSec * 1000UL;
   if (cfg.campEn) {
     if (wakeKind == 1) deadline = millis() + awakeMs;
