@@ -3,6 +3,8 @@
 #include "app.h"
 
 static volatile bool dirty = true;
+static int stable[MAX_INPUTS], last[MAX_INPUTS];  // tripwire debounce state
+static uint32_t changedAt[MAX_INPUTS];
 static HardwareSerial radarSerial(1);
 static bool radarActive = false;
 
@@ -22,6 +24,7 @@ static void setupPins() {
   for (int i = 0; i < MAX_INPUTS; i++) {
     Input &in = cfg.in[i];
     live.inputLevel[i] = -1;
+    stable[i] = last[i] = -1;  // read the level afresh, or it shows "?" until the pin changes
     if (!in.en) continue;
     if (!claim(in.pin, in.name)) { in.en = false; continue; }
     pinMode(in.pin, in.pull == 1 ? INPUT_PULLUP : in.pull == 2 ? INPUT_PULLDOWN : INPUT);
@@ -61,13 +64,13 @@ static void setupPins() {
   }
   if (cfg.irPin >= 0) { digitalWrite(cfg.irPin, LOW); pinMode(cfg.irPin, OUTPUT); }
   if (cfg.sirenPin >= 0) { digitalWrite(cfg.sirenPin, cfg.sirenActiveLow ? HIGH : LOW); pinMode(cfg.sirenPin, OUTPUT); }
+  if (cfg.campEn && cfg.campPin >= 0 && (cfg.campPin == cfg.sirenPin || cfg.campPin == cfg.irPin))
+    warn += "Camp wake pin " + pinName(cfg.campPin) + " is also an output (alarm bell or IR lamp): pick another wake pin. ";
   live.pinWarning = warn;
   if (warn.length()) logEvent("warning", "pins", warn);
 }
 
 // ---------- GPIO tripwires ----------
-static int stable[MAX_INPUTS], last[MAX_INPUTS];
-static uint32_t changedAt[MAX_INPUTS];
 
 static void pollInputs() {
   for (int i = 0; i < MAX_INPUTS; i++) {

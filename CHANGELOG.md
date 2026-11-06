@@ -2,6 +2,11 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.4 (2026-11-06): The Case of the Silent Bell
+- Fix: an alarm bell (or IR lamp) on D1 did nothing, because the camp wake pin (default D1) was set to an input at boot even with camp mode off
+- Fix: tripwires showed "?" after settings were saved, until the pin changed
+- Warning when the camp wake pin is also the alarm bell or IR lamp pin
+
 ## 3.3 (2026-11-06): The Page That Would Not Starve
 - The web page and case log run in their own task on core 0, so the page stays responsive while the camera, microphone and sensors on core 1 are busy recording
 
