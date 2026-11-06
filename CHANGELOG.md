@@ -2,6 +2,10 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.2 (2026-11-06): The Return of the Wireless
+- On the hotspot, the house retries your Wi-Fi once a minute and switches back by itself (skipped while a phone is on the hotspot)
+- Firmware upload refuses the 8 MB full USB image and stops at the first failed write instead of hanging the page
+
 ## 3.1 (2026-11-06): A Study in Scarlet (and Green, and Blue)
 - Instructions to Watson: coloured tiles with big icons to jump to each section; a green dot shows which are switched on
 - Each section has its own colour, big icon and ON/off badge, opens and closes with a tap, and has its own Seal and send button
