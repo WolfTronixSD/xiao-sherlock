@@ -1,0 +1,10 @@
+# Wi-Fi and other credentials - never commit
+secrets.h
+
+# Build output
+build/
+*.bin
+*.elf
+*.map
+*.o
+*.d

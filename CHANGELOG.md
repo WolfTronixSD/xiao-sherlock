@@ -1,0 +1,42 @@
+# The Chronicles
+
+The same history is shown in the web GUI under **The Workshop**.
+
+## 2.3 (2026-11-05): The Sign of the Swift Lens
+- Low-latency live view: the next picture is requested as soon as the last one arrives (fps shown)
+- Touch zone editor: draw, move and resize places of interest with a finger on iPhone
+- Sliders for sensitivity and number settings
+- Fix: network timeouts were 1000x too short (file downloads cut off, Telegram connect could fail)
+- Fix: the Evidence Locker list no longer opens every file (thousands of files froze the web page); shows the newest 600 and the total
+- Fix: the Telegram sender can no longer trip the watchdog and reboot the board
+- Fix: video recording no longer starves the web page; a web watchdog restarts the board if the page is stuck for 45 s and logs where
+- Fix: writing the case log never waits for a busy SD card (the web page stalled while photos were saved); SD bus at 20 MHz
+- New evidence is stored in one folder per day (/sec/YYYYMMDD/); a folder with thousands of files made every save take seconds
+
+## 2.2 (2026-11-05): The Adventure of the Pocket Telegraph
+- Telegram alerts with a photo, switchable per sensor, with a rate limit and a "Find my chat ID" button
+- The Kinetoscope: play `.avi` clips in the browser (iPhone too)
+- Burn a whole day or everything in the Evidence Locker
+- Icons and taglines for every settings section
+- The Wi-Fi field shows the network currently in use
+- Version history in the GUI
+
+## 2.1 (2026-11-05): The Case of the Frozen Safari
+- Files are sent in small pieces with a timeout, so a paused iPhone download can't freeze the device
+- HTTP range requests, so audio and video play in Safari
+- The SD card is retried and remounted automatically
+
+## 2.0 (2026-11-05): A Study in Sensors
+- 221B Baker Street web GUI
+- Motion zones drawn on the live picture
+- AVI video clips
+- Up to 4 GPIO tripwires, HLK-LD2450 radar, HC-SR04 ultrasonic
+- Detailed case log (`caselog.csv`)
+- All settings in the web page, OTA firmware upload
+- No secrets in the source code
+
+## 1.1: The Quiet Microphone
+- Recording volume boost
+
+## 1.0: The First Case
+- Sound trigger with WAV clips and photos, one GPIO trigger, simple settings page
