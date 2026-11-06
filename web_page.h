@@ -127,7 +127,8 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
     <div id="warn" style="color:var(--red)"></div>
    </div>
    <div class="card"><h2>&#129658; The Doctor's Report</h2><table class="health" id="health"></table>
-    <div class="small">Green: in good health. Amber: keep an eye on it. Red: send for Dr Watson.</div></div>
+    <div class="small">Green: in good health. Amber: keep an eye on it. Red: send for Dr Watson.</div>
+    <div class="row" id="campRow" style="display:none"><button class="btn plain" onclick="sleepNow()">&#128164; Send Holmes to sleep now</button></div></div>
    <div class="card"><h2>The Radar</h2><canvas id="radar" width="340" height="190"></canvas>
     <div class="small" id="radarTxt"></div></div>
   </div>
@@ -179,8 +180,11 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
  <div class="card"><h2>The Telegram Boy</h2>
   <div class="small">1. In Telegram open <b>@BotFather</b>, send <b>/newbot</b>, pick a name, paste the token into "The Telegram Boy" section above, tick <i>Send Telegram alerts</i>, and press Seal and send.<br>
   2. Open your new bot in Telegram and send it any message (e.g. <i>hello</i>).<br>
-  3. Press <b>Find my chat ID</b>, then <b>Send a test</b>. Choose which sensors alert you with <i>Send Telegram alert</i> in each section.</div>
+  3. Press <b>Find my chat ID</b>, then <b>Send a test</b>. Choose which sensors alert you with <i>Send an alert</i> in each section.</div>
   <div class="row"><button class="btn" onclick="tg('findchat')">Find my chat ID</button><button class="btn red" onclick="tg('test')">Send a test</button><span class="small" id="tgMsg"></span></div></div>
+ <div class="card"><h2>&#128038; The Pigeon Post (Meshtastic)</h2>
+  <div class="small">For the camp: no Wi-Fi, no phone signal, still alerts. Set up the Pigeon Post section above, press Seal and send, then send a test. It arrives in the Meshtastic app on any radio on the same channel.</div>
+  <div class="row"><button class="btn red" onclick="meshTest()">Send a test pigeon</button><span class="small" id="meshMsg"></span></div></div>
 </section>
 
 <section class="tab" id="t-shop">
@@ -244,7 +248,7 @@ async function status(){try{st=await (await api('/api/status')).json()}catch(e){
  $('nightL').className='lamp'+(st.night?' hi':'');$('nightTxt').innerHTML=(st.night?'on duty':'resting')+` <span class="small">(${NM[st.nightMode]||'?'}, light level ${st.light<0?'?':st.light}${st.irPin?', IR lamp on '+esc(st.irPin):''})</span>`;
  $('bellL').className='lamp'+(st.siren?' rec':'');$('bellTxt').innerHTML=(st.siren?'RINGING':'silent')+` <span class="small">${st.sirenPin?esc(st.sirenPin):'(no pin set)'}</span>`;
  $('bellBtn').textContent=st.siren?'Silence it':'Ring it';
- drawRadar();health();
+ drawRadar();health();syncTime();
  if(st.motionEn===false)$('motionNote').textContent='Motion detection is off - switch it on under Instructions to Watson.';else $('motionNote').textContent='Whole picture changed: '+st.motionGlobal+'%';
  zones.forEach((z,i)=>{const c=$('zp'+i),m=$('zm'+i),v=st.motion[i]||0;if(c)c.textContent=v+'%';
   if(m){m.style.width=Math.min(100,v)+'%';m.nextElementSibling.style.left=z.minPct+'%'}});
@@ -308,6 +312,10 @@ async function saveZones(){try{await api('/api/config',{method:'POST',body:JSON.
 
 // ---------- arm / test ----------
 async function toggleArm(){const on=st.armed?0:1;await api('/api/arm?on='+on,{method:'POST'});toast(on?'The game is afoot!':'Holmes retires to his violin.');status()}
+async function sleepNow(){if(!confirm('Holmes sleeps until the wake pin or the BOOT button. The page goes dark. Proceed?'))return;try{await api('/api/sleep',{method:'POST'});toast('Good night, Holmes.')}catch(e){toast(e.message)}}
+async function meshTest(){$('meshMsg').textContent='Releasing the pigeon...';try{$('meshMsg').textContent=await (await api('/api/mesh/test',{method:'POST'})).text()}catch(e){$('meshMsg').textContent=e.message}}
+// camp mode has no internet clock: the visiting phone sets it (the house ignores it when its own clock is right)
+let timeSent=false;function syncTime(){if(timeSent||st.timeOk!==false)return;timeSent=true;api('/api/settime?ms='+Date.now(),{method:'POST'}).catch(()=>{timeSent=false})}
 async function bell(){try{await api('/api/siren?on='+(st.siren?0:1),{method:'POST'});toast(st.siren?'Silence in the house.':'Ring the bell, Watson!');status()}catch(e){toast(e.message)}}
 async function test(){await api('/api/test',{method:'POST'});toast(pick(REMARKS.test))}
 
@@ -421,6 +429,8 @@ const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slip
  ['Bat Ears','&#129415;&#128266;','Squeaks at things and listens for the echo. The bat insists on a 5V-to-3.3V divider.'],
  ['Night Watch','&#127769;&#128294;','When the gas lamps go out, Holmes lights his secret lantern and sees in black and white.'],
  ['Alarm Bell','&#128680;&#128276;','A bell loud enough to wake Mycroft. Rings when a sensor with Ring the alarm bell ticked fires.'],
+ ['Pigeon Post','&#128038;&#128225;','Carrier pigeons with LoRa radios. Flies miles over the woods with no Wi-Fi and no phone signal.'],
+ ['Camp','&#9978;&#65039;&#128164;','Holmes on holiday: sleeps on a battery, wakes for intruders, opens the hotspot when you press BOOT.'],
  ['Diogenes Club','&#127963;&#65039;&#129323;','Mycroft never speaks, but he reads every report: MQTT and Home Assistant.']];
 function field(f){const v=cfg[f.k],id='f_'+f.k;let input;
  if(f.t=='b')input=`<input type="checkbox" id="${id}" ${v?'checked':''}>`;
@@ -463,6 +473,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.0','2026-11-06','The Adventure of the Sleeping Detective',['Camp mode: deep sleep on a battery, wakes on the PIR, records with no Wi-Fi and sleeps again when quiet','Press BOOT to wake it with the hotspot Baker-Street-221B (or your Wi-Fi) and look at the evidence','The Pigeon Post: alerts over a Meshtastic LoRa radio on a UART, with a test button','Optional heartbeat over LoRa with battery voltage and card space','Battery voltage in the health panel and a Send Holmes to sleep now button','The visiting phone sets the clock when there is no internet']],
  ['2.9','2026-11-06','The Hound in the Dark',['The Night Watch: switches to black and white and lights an IR lamp when it gets dark, by the clock, or always','Light level shown live on The Scene and written to the case log','The Alarm Bell: a siren, buzzer or LED output, steady or beeping, rung by any sensor you choose; silenced when disarmed','The Diogenes Club: MQTT with Home Assistant auto discovery (armed switch, alarm bell, test button, clue, loudness, light, temperature and more)']],
  ['2.8','2026-11-05',"The Doctor's Report",['Health panel on The Scene: Wi-Fi, chip temperature, uptime, memory, PSRAM, card and restarts, each with a lamp','Restarts are counted and their reason is shown and written to the case log']],
  ['2.7','2026-11-05','The Tidy Lodger',['When the card is over 90% full (adjustable) the oldest days are deleted until there is room','Today and the case log are never touched; each clean-up is written in the case log']],
@@ -495,6 +506,11 @@ function health(){if(!$('health')||st.tempC==null)return;const up=st.uptime,d=Ma
   ['SD card',st.sd?(st.totalMB?`${usedPct}% used, ${(st.freeMB/1024).toFixed(1)} GB free`:st.freeMB+' MB free'):'missing!',!st.sd?2:usedPct<85?0:usedPct<95?1:2],
   ['Restarts',`#${st.boots}, last: ${esc(st.reset)}`,/crash|watchdog|brownout/.test(st.reset)?2:0]];
  if(st.mqtt>=0)rows.push(['MQTT broker',st.mqtt==1?'connected':'not reachable',st.mqtt==1?0:2]);
+ if(st.battMv>=0)rows.push(['Battery',(st.battMv/1000).toFixed(2)+' V',st.battMv>3700?0:st.battMv>3400?1:2]);
+ if(st.camp)rows.push(['Camp mode',`sleeps in ${Math.floor(st.sleepIn/60)}m ${st.sleepIn%60}s (woken by ${esc(st.wakeWhy)}, wake #${st.wakes})`,st.sleepIn>60?0:1]);
+ if(st.mesh)rows.push(['Pigeon Post','LoRa radio wired',0]);
+ if(!st.timeOk)rows.push(['Clock','not set (no internet)',1]);
+ $('campRow').style.display=st.camp?'':'none';
  $('health').innerHTML=rows.map(r=>`<tr><td><span class="lamp ${['lo','hi','rec'][r[2]]}"></span>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}
 function sys(){const up=st.uptime,d=Math.floor(up/86400),h=Math.floor(up%86400/3600),m=Math.floor(up%3600/60);
  $('sys').innerHTML=[['Firmware',st.fw],['Clock',st.time],['Awake for',`${d}d ${h}h ${m}m`],['SD card',st.sd?st.freeMB+' MB free':'missing!'],

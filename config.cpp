@@ -45,7 +45,7 @@ static void addActions(const String &g, const String &k, Actions &a) {
   add(g, k + "_photo", "Take photos", 'b', &a.photo);
   add(g, k + "_video", "Record video clip", 'b', &a.video);
   add(g, k + "_audio", "Record audio clip", 'b', &a.audio);
-  add(g, k + "_notify", "Send Telegram alert", 'b', &a.notify);
+  add(g, k + "_notify", "Send an alert (Telegram and LoRa)", 'b', &a.notify);
   add(g, k + "_siren", "Ring the alarm bell", 'b', &a.siren);
 }
 
@@ -181,6 +181,29 @@ void buildFields() {
   add(g, "mqttBase", "Topic prefix", 's', cfg.mqttBase, 0, sizeof(cfg.mqttBase), nullptr,
       "Publishes PREFIX/state, PREFIX/event and PREFIX/clue. Listens on PREFIX/set/armed, PREFIX/set/siren (ON or OFF) and PREFIX/set/test.");
   add(g, "mqttHa", "Announce to Home Assistant (auto discovery)", 'b', &cfg.mqttHa);
+
+  g = "The Pigeon Post (Meshtastic LoRa)";
+  add(g, "meshEn", "Send alerts over a Meshtastic radio", 'b', &cfg.meshEn, 0, 0, nullptr,
+      "On the radio (Meshtastic app > Module config > Serial): enable, mode TEXTMSG, baud 38400, and set its RX/TX pins. Wire ESP TX to radio RX, ESP RX to radio TX, and GND to GND. Every alert becomes a text on the primary channel.");
+  add(g, "meshTx", "ESP TX pin (to radio RX)", 'p', &cfg.meshTx);
+  add(g, "meshRx", "ESP RX pin (from radio TX, optional)", 'p', &cfg.meshRx);
+  add(g, "meshBaud", "Baud rate", 'e', &cfg.meshBaud, 0, 0, "9600:9600|19200:19200|38400:38400|57600:57600|115200:115200");
+  add(g, "meshGapSec", "At most one LoRa text every (s)", 'i', &cfg.meshGapSec, 5, 3600, nullptr,
+      "LoRa is slow and shared. One minute keeps the channel friendly.");
+
+  g = "The Camp (battery, sleep and hotspot)";
+  add(g, "campEn", "Camp mode: sleep deeply between visitors", 'b', &cfg.campEn, 0, 0, nullptr,
+      "While asleep there is no web page and no Wi-Fi. Movement on the wake pin wakes the house: it records with no Wi-Fi, sends a LoRa alert and sleeps again. Press BOOT to wake it with the hotspot Baker-Street-221B (or your Wi-Fi if it is in range) to look at the evidence or switch camp mode off.");
+  add(g, "campPin", "Wake pin (the PIR, D0-D5 only)", 'p', &cfg.campPin, 0, 0, nullptr,
+      "Use the same pin as your PIR tripwire so its photo, video and alert settings apply. D6 and D7 cannot wake the chip.");
+  add(g, "campLevel", "Wake when the pin", 'e', &cfg.campLevel, 0, 0, "1:goes HIGH (PIR)|0:goes LOW (switch to GND)");
+  add(g, "campAwakeSec", "Stay awake after the last movement (s)", 'i', &cfg.campAwakeSec, 5, 600);
+  add(g, "campHotspotMin", "After BOOT or power on, stay awake without visitors (min)", 'i', &cfg.campHotspotMin, 1, 120);
+  add(g, "campBeatMin", "Heartbeat over LoRa every (min, 0 = never)", 'i', &cfg.campBeatMin, 0, 1440, nullptr,
+      "Wakes briefly, sends battery and card status, sleeps again. 360 = four times a day.");
+  add(g, "battPin", "Battery voltage pin (through a divider)", 'p', &cfg.battPin, 0, 0, nullptr,
+      "Two equal resistors (e.g. 2 x 100k) from battery + to GND, middle to the pin. Never put more than 3.3 V on the pin.");
+  add(g, "battMul", "Divider ratio x100 (two equal resistors = 200)", 'i', &cfg.battMul, 100, 1000);
 }
 
 static void writeField(JsonObject o, const Field &f, bool forWeb) {

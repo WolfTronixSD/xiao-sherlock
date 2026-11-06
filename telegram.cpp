@@ -3,6 +3,7 @@
 // then press "Find my chat ID".
 #include "app.h"
 #include <NetworkClientSecure.h>
+#include <WiFi.h>
 #include <ArduinoJson.h>
 
 struct Alert { String text; std::vector<uint8_t> photo; };
@@ -82,7 +83,7 @@ bool telegramReady() { return cfg.tgEn && cfg.tgToken[0] && cfg.tgChat[0]; }
 
 // force = ignore the minimum gap (used by the test button)
 void telegramAlert(const String &text, bool withPhoto, bool force) {
-  if (!telegramReady()) return;
+  if (!telegramReady() || WiFi.status() != WL_CONNECTED) return;
   uint32_t now = millis();
   if (!force && lastSent && now - lastSent < cfg.tgGapSec * 1000UL) return;
   lastSent = now;

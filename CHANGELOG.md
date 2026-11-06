@@ -2,6 +2,14 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.0 (2026-11-06): The Adventure of the Sleeping Detective
+- Camp mode: deep sleep on a battery; the PIR (wake pin) wakes it, it records photos/video/audio to SD with no Wi-Fi, then sleeps again once quiet
+- Press BOOT to wake it with the hotspot Baker-Street-221B (or home Wi-Fi if in range); it stays awake while someone is looking at the page
+- The Pigeon Post: alerts as Meshtastic LoRa texts through a radio on a UART (serial module, TEXTMSG mode), with a test button
+- Optional LoRa heartbeat with battery voltage and free card space; battery voltage pin with divider
+- The visiting phone sets the clock when there is no internet; "Send Holmes to sleep now" button
+- Telegram is skipped when there is no Wi-Fi
+
 ## 2.9 (2026-11-06): The Hound in the Dark
 - The Night Watch: black and white picture plus an IR lamp output (any free pin) when it gets dark, by the clock, or always
 - Light level shown on The Scene, written in the case log, with separate night and day levels so the lamp does not flicker

@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "2.9"
+#define FW_VERSION "3.0"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -100,6 +100,21 @@ struct Config {
   char mqttPass[65] = "";
   char mqttBase[32] = "baker-street";
   bool mqttHa = true;
+  // camp mode (battery: deep sleep, wake on PIR or BOOT, hotspot on demand)
+  bool campEn = false;
+  int  campPin = 2;         // D1, the default PIR tripwire
+  int  campLevel = 1;       // 1 wake when HIGH, 0 when LOW
+  int  campAwakeSec = 30;   // stay awake this long after the last movement
+  int  campHotspotMin = 10; // after BOOT / power on: stay awake this long without a web visitor
+  int  campBeatMin = 0;     // heartbeat over LoRa every N minutes (0 = off)
+  int  battPin = -1;        // battery voltage through a divider
+  int  battMul = 200;       // divider ratio x100 (two equal resistors = 200)
+  // Meshtastic LoRa radio on a UART (serial module, TEXTMSG mode)
+  bool meshEn = false;
+  int  meshTx = -1;         // ESP TX -> radio RX
+  int  meshRx = -1;         // ESP RX <- radio TX (optional)
+  int  meshBaud = 38400;
+  int  meshGapSec = 60;
 };
 extern Config cfg;
 
@@ -206,7 +221,22 @@ void sirenSound(int seconds, const String &why);
 void sirenStop(const String &why);
 void mqttEvent(const String &kind, const String &who, const String &detail);
 
+// ---------- camp.cpp (camp mode and Meshtastic) ----------
+void campEarly();
+bool campQuiet();
+void campStart();
+void campSleepNow();
+int  campSleepIn();
+const char *campWakeWhy();
+uint32_t campWakeCount();
+void meshBegin();
+bool meshSend(const String &text, bool force);
+int  batteryMv();
+String battText();
+
 // ---------- web.cpp ----------
+uint32_t webLastRequest();
+bool webBusy();
 int deleteDay(const String &day, bool keepLog);
 String oldestDay();
 void webStart();

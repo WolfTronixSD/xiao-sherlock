@@ -3,6 +3,7 @@
 #include <WebServer.h>
 #include <WiFi.h>
 #include <Update.h>
+#include <sys/time.h>
 #include <ArduinoJson.h>
 #include "ff.h"
 #include <algorithm>
@@ -22,6 +23,9 @@ static bool auth() {
 static volatile const char *webWhere = "idle";  // "idle" = outside a request (e.g. writing the case log)
 static volatile uint32_t webBeat = 0;
 static void webAlive() { webBeat = millis(); }
+static volatile uint32_t lastRequest = 0;  // for camp mode: stay awake while someone is looking
+uint32_t webLastRequest() { return lastRequest; }
+bool webBusy() { return strcmp((const char *)webWhere, "idle") != 0; }
 static void webWatchdog(void *);
 
 #define ROUTE(path, method, body) server.on(path, method, [] { webWhere = path; if (auth()) { body; } })
@@ -63,6 +67,13 @@ static void handleStatus() {
   d["siren"] = live.siren;
   d["sirenPin"] = cfg.sirenPin >= 0 ? pinName(cfg.sirenPin) : "";
   d["mqtt"] = live.mqtt;
+  d["camp"] = cfg.campEn;
+  d["sleepIn"] = campSleepIn();
+  d["wakeWhy"] = campWakeWhy();
+  d["wakes"] = campWakeCount();
+  d["battMv"] = batteryMv();
+  d["mesh"] = cfg.meshEn;
+  d["timeOk"] = timeValid();
   JsonArray in = d["inputs"].to<JsonArray>();
   for (int i = 0; i < MAX_INPUTS; i++) {
     JsonObject o = in.add<JsonObject>();
@@ -102,6 +113,20 @@ static void handleSaveConfig() {
   bool netChanged = oldSsid != cfg.wifiSsid || oldPass != cfg.wifiPass || oldHost != cfg.hostname;
   logEvent("config", "web", String("settings changed, ") + (cfg.armed ? "ARMED" : "disarmed"));
   server.send(200, "text/plain", netChanged ? "restart" : "ok");
+}
+
+// The phone tells the house the time (camp mode has no internet clock). Only used when the clock is unset or far off.
+static void handleSetTime() {
+  long long ms = atoll(server.arg("ms").c_str());
+  time_t now = time(nullptr);
+  if (ms > 1700000000000LL && (!timeValid() || llabs((long long)now - ms / 1000) > 120)) {
+    struct timeval tv = {(time_t)(ms / 1000), (suseconds_t)((ms % 1000) * 1000)};
+    settimeofday(&tv, nullptr);
+    logEvent("config", "web", "clock set from the visiting phone: " + clockText());
+    server.send(200, "text/plain", "set");
+    return;
+  }
+  server.send(200, "text/plain", "ok");
 }
 
 static void handleArm() {
@@ -374,6 +399,9 @@ void webStart() {
   ROUTE("/api/config", HTTP_GET, sendJson(configJson(true)));
   ROUTE("/api/config", HTTP_POST, handleSaveConfig());
   ROUTE("/api/arm", HTTP_POST, handleArm());
+  ROUTE("/api/sleep", HTTP_POST, { if (!cfg.campEn) { server.send(400, "text/plain", "Camp mode is off."); return; } server.send(200, "text/plain", "Good night"); campSleepNow(); });
+  ROUTE("/api/settime", HTTP_POST, { handleSetTime(); });
+  ROUTE("/api/mesh/test", HTTP_POST, { if (!cfg.meshEn || cfg.meshTx < 0) { server.send(400, "text/plain", "Enable the Pigeon Post and set the TX pin first, then save."); return; } meshSend("221B test: Inspector Lestrade checks the pigeons. All in order." + battText(), true); server.send(200, "text/plain", "Sent - look at your Meshtastic app"); });
   ROUTE("/api/siren", HTTP_POST, { if (server.arg("on") == "1") sirenSound(cfg.sirenSec, "rung from the web page"); else sirenStop("silenced from the web page"); server.send(200, "text/plain", live.siren ? "1" : "0"); });
   ROUTE("/api/test", HTTP_POST, { raiseEvent(SRC_TEST, "Inspector Lestrade", "manual test from the web page"); server.send(200, "text/plain", "ok"); });
   ROUTE("/api/tg/test", HTTP_POST, { if (!telegramReady()) { server.send(400, "text/plain", "Enable Telegram and fill in token and chat ID first, then save."); return; } telegramAlert("221B test: Inspector Lestrade checks the telegraph. All in order.", true, true); server.send(200, "text/plain", "Telegram sent - check your phone"); });
@@ -411,4 +439,5 @@ void webLoop() {
   webAlive();
   webWhere = "idle";
   server.handleClient();
+  if (webBusy()) lastRequest = millis();
 }

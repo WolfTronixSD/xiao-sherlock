@@ -78,3 +78,27 @@ arduino-cli compile -u -p COM30 -b "esp32:esp32:XIAO_ESP32S3:PSRAM=opi,Partition
 ## Ideas for later
 
 Telegram/e-mail alerts, MQTT / Home Assistant, a siren or LED output, arming on a schedule, deleting the oldest files when the card is full, an IR LED for night vision.
+
+## Camp mode and the Pigeon Post (v3.0)
+
+For road trips and camping: battery power, no Wi-Fi, no phone signal.
+
+**Wiring (Meshnology ESP32-S3 SX1262 or any Meshtastic radio):**
+
+| XIAO | Radio |
+|---|---|
+| ESP TX pin (e.g. D6 / GPIO43) | radio RX pin set in the Serial module |
+| ESP RX pin (optional, e.g. D7 / GPIO44) | radio TX pin |
+| GND | GND |
+
+In the Meshtastic app on the radio: *Module config > Serial*: enabled, mode **TEXTMSG**, baud **38400**, and the RX/TX pins you wired. Every alert becomes a text on the primary channel, so any radio or phone on that channel gets it. If you use D6/D7 for the radio, turn the LD2450 radar off.
+
+**PIR:** output to D1 (the default tripwire 2 "PIR" and the default wake pin). Only D0-D5 can wake the chip.
+
+**Battery voltage (optional):** two equal resistors (e.g. 2 x 100k) from battery + to GND, middle to a free pin (e.g. D0); set *Battery voltage pin* and leave the ratio at 200.
+
+**How it behaves with Camp mode on:**
+- Movement on the wake pin: wakes, records with the PIR tripwire's settings, sends a LoRa alert, sleeps when quiet for 30 s (adjustable).
+- Press **BOOT**: wakes with home Wi-Fi if in range, else the hotspot **Baker-Street-221B** (http://192.168.4.1). It stays awake while the page is open, then sleeps after 10 min (adjustable). The phone sets the clock on its visit.
+- Optional heartbeat over LoRa every N minutes with battery voltage and free card space.
+- While asleep the USB port disappears too. To flash, hold BOOT, tap RESET, release BOOT.

@@ -213,5 +213,6 @@ void raiseEvent(Source src, const String &who, const String &detail) {
   if (a.siren) sirenSound(cfg.sirenSec, String(who) + " - " + detail);
   if (a.photo) cameraRequestPhotos(tag);
   if (a.video) cameraRequestVideo(tag);
+  if (a.notify && cfg.meshEn) meshSend(String("221B: ") + who + " - " + detail + " at " + clockText() + battText(), false);
   if (a.notify) telegramAlert(String("\xF0\x9F\x95\xB5 221B: ") + who + " - " + detail + "\n" + clockText() + "\n" + sensorSnapshot(), true, src == SRC_TEST);
 }

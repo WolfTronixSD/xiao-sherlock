@@ -44,6 +44,10 @@ static void setupPins() {
   }
   // outputs (outputs.cpp drives them): release a pin that is no longer used, claim the new one
   static int prevIr = -1, prevSiren = -1;
+  if (cfg.meshEn && !((cfg.meshTx < 0 || claim(cfg.meshTx, "LoRa radio")) && (cfg.meshRx < 0 || claim(cfg.meshRx, "LoRa radio")))) cfg.meshEn = false;
+  meshBegin();
+  if (cfg.battPin >= 0 && !claim(cfg.battPin, "battery")) cfg.battPin = -1;
+  if (cfg.battPin >= 0) pinMode(cfg.battPin, INPUT);
   if (cfg.irPin >= 0 && !claim(cfg.irPin, "IR lamp")) cfg.irPin = -1;
   if (cfg.sirenPin >= 0 && !claim(cfg.sirenPin, "alarm bell")) cfg.sirenPin = -1;
   for (int *prev : {&prevIr, &prevSiren}) {

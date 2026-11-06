@@ -74,6 +74,7 @@ void setup() {
   buildFields();
   loadConfig();
   countBoot();
+  campEarly();
   // The clock survives a software restart, so set the time zone now, not only when Wi-Fi is up,
   // or files saved right after a restart get UTC names.
   setenv("TZ", cfg.tz, 1);
@@ -84,7 +85,8 @@ void setup() {
   else Serial.println("SD card not found - nothing will be saved");
   if (!audioInit()) Serial.println("Microphone init FAILED");
 
-  startWifi();
+  if (campQuiet()) { WiFi.mode(WIFI_OFF); Serial.println("Camp mode: quiet wake, no Wi-Fi"); }
+  else startWifi();
   webStart();
   cameraStart();
   audioStart();
@@ -92,6 +94,7 @@ void setup() {
   telegramStart();
   presenceStart();
   outputsStart();
+  campStart();
   janitorStart();
   logEvent("start", "Holmes", String("on duty, ") + (cfg.armed ? "ARMED" : "disarmed") + ", firmware " FW_VERSION +
            ", restart #" + live.boots + " (" + live.resetWhy + ")");
