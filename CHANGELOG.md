@@ -2,6 +2,14 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 2.9 (2026-11-06): The Hound in the Dark
+- The Night Watch: black and white picture plus an IR lamp output (any free pin) when it gets dark, by the clock, or always
+- Light level shown on The Scene, written in the case log, with separate night and day levels so the lamp does not flicker
+- The Alarm Bell: siren/buzzer/LED output, steady, slow beep or fast blink, rung by any sensor with "Ring the alarm bell" ticked
+- Ring or silence it from The Scene; disarming silences it
+- The Diogenes Club: MQTT reports (state, events, clue) and commands (armed, siren, test), with Home Assistant auto discovery
+- MQTT status in the Doctor's Report
+
 ## 2.8 (2026-11-05): The Doctor's Report
 - Health panel on The Scene: Wi-Fi signal, chip temperature, uptime, memory (now, lowest, largest piece), PSRAM, card use and restarts
 - Each line has a lamp: green good, amber watch, red trouble

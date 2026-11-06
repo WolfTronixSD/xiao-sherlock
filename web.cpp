@@ -56,6 +56,13 @@ static void handleStatus() {
   d["fw"] = FW_VERSION;
   d["phoneHome"] = live.phoneHome;
   d["warn"] = live.pinWarning;
+  d["light"] = live.light;
+  d["night"] = live.night;
+  d["nightMode"] = cfg.nightMode;
+  d["irPin"] = cfg.irPin >= 0 ? pinName(cfg.irPin) : "";
+  d["siren"] = live.siren;
+  d["sirenPin"] = cfg.sirenPin >= 0 ? pinName(cfg.sirenPin) : "";
+  d["mqtt"] = live.mqtt;
   JsonArray in = d["inputs"].to<JsonArray>();
   for (int i = 0; i < MAX_INPUTS; i++) {
     JsonObject o = in.add<JsonObject>();
@@ -89,6 +96,7 @@ static void handleSaveConfig() {
   saveConfig();
   cameraApplyConfig();
   sensorsApplyConfig();
+  outputsApplyConfig();
   setenv("TZ", cfg.tz, 1);
   tzset();
   bool netChanged = oldSsid != cfg.wifiSsid || oldPass != cfg.wifiPass || oldHost != cfg.hostname;
@@ -366,6 +374,7 @@ void webStart() {
   ROUTE("/api/config", HTTP_GET, sendJson(configJson(true)));
   ROUTE("/api/config", HTTP_POST, handleSaveConfig());
   ROUTE("/api/arm", HTTP_POST, handleArm());
+  ROUTE("/api/siren", HTTP_POST, { if (server.arg("on") == "1") sirenSound(cfg.sirenSec, "rung from the web page"); else sirenStop("silenced from the web page"); server.send(200, "text/plain", live.siren ? "1" : "0"); });
   ROUTE("/api/test", HTTP_POST, { raiseEvent(SRC_TEST, "Inspector Lestrade", "manual test from the web page"); server.send(200, "text/plain", "ok"); });
   ROUTE("/api/tg/test", HTTP_POST, { if (!telegramReady()) { server.send(400, "text/plain", "Enable Telegram and fill in token and chat ID first, then save."); return; } telegramAlert("221B test: Inspector Lestrade checks the telegraph. All in order.", true, true); server.send(200, "text/plain", "Telegram sent - check your phone"); });
   ROUTE("/api/tg/findchat", HTTP_POST, server.send(200, "text/plain", telegramFindChat()));

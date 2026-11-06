@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "2.8"
+#define FW_VERSION "2.9"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -13,7 +13,7 @@
 // ---------- event sources ----------
 enum Source { SRC_SOUND, SRC_MOTION, SRC_INPUT1, SRC_INPUT2, SRC_INPUT3, SRC_INPUT4, SRC_RADAR, SRC_SONAR, SRC_TEST, SRC_COUNT };
 
-struct Actions { bool photo, video, audio, notify; };
+struct Actions { bool photo, video, audio, notify, siren; };
 struct Input   { bool en; char name[20]; int pin; int pull; int edge; Actions act; };
 struct Zone    { bool en; char name[20]; float x, y, w, h; int minPct; };
 
@@ -79,6 +79,27 @@ struct Config {
   char tgChat[24] = "";
   bool tgPhoto = true;
   int  tgGapSec = 30;
+  // night watch (IR lamp + black-and-white picture)
+  int  nightMode = 1;       // 0 off, 1 by light level, 2 by the clock, 3 always
+  int  nightBelow = 35;     // light level (0-255) under which night begins
+  int  nightAbove = 80;     // light level over which day returns
+  int  nightFrom = 2000;    // HHMM, for mode 2
+  int  nightTo = 700;
+  bool nightBW = true;
+  int  irPin = -1;
+  // the alarm bell (siren, buzzer or LED via a transistor/relay)
+  int  sirenPin = -1;
+  bool sirenActiveLow = false;
+  int  sirenSec = 10;
+  int  sirenStyle = 1;      // 0 steady, 1 slow beep, 2 fast blink
+  // MQTT / Home Assistant
+  bool mqttEn = false;
+  char mqttHost[48] = "";
+  int  mqttPort = 1883;
+  char mqttUser[33] = "";
+  char mqttPass[65] = "";
+  char mqttBase[32] = "baker-street";
+  bool mqttHa = true;
 };
 extern Config cfg;
 
@@ -100,6 +121,10 @@ struct LiveState {
   uint32_t totalMB = 0;
   uint32_t boots = 0;                // restarts since the firmware was first installed
   const char *resetWhy = "?";        // why the last restart happened
+  volatile int  light = -1;          // average picture brightness 0-255 (-1 not measured yet)
+  volatile bool night = false;       // night watch on (IR lamp lit, picture black and white)
+  volatile bool siren = false;       // alarm bell sounding
+  volatile int  mqtt = -1;           // -1 off, 0 not connected, 1 connected
   String pinWarning;
 };
 extern LiveState live;
@@ -173,6 +198,13 @@ String telegramFindChat();
 
 // ---------- presence.cpp ----------
 void presenceStart();
+
+// ---------- outputs.cpp (night watch, alarm bell, MQTT) ----------
+void outputsStart();
+void outputsApplyConfig();
+void sirenSound(int seconds, const String &why);
+void sirenStop(const String &why);
+void mqttEvent(const String &kind, const String &who, const String &detail);
 
 // ---------- web.cpp ----------
 int deleteDay(const String &day, bool keepLog);

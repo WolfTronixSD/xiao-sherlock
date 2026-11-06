@@ -42,6 +42,21 @@ static void setupPins() {
       radarActive = true;
     } else cfg.radarEn = false;
   }
+  // outputs (outputs.cpp drives them): release a pin that is no longer used, claim the new one
+  static int prevIr = -1, prevSiren = -1;
+  if (cfg.irPin >= 0 && !claim(cfg.irPin, "IR lamp")) cfg.irPin = -1;
+  if (cfg.sirenPin >= 0 && !claim(cfg.sirenPin, "alarm bell")) cfg.sirenPin = -1;
+  for (int *prev : {&prevIr, &prevSiren}) {
+    int now = prev == &prevIr ? cfg.irPin : cfg.sirenPin;
+    if (*prev >= 0 && *prev != now) {
+      bool reused = false;
+      for (int p : used) reused |= p == *prev;
+      if (!reused) pinMode(*prev, INPUT);
+    }
+    *prev = now;
+  }
+  if (cfg.irPin >= 0) { digitalWrite(cfg.irPin, LOW); pinMode(cfg.irPin, OUTPUT); }
+  if (cfg.sirenPin >= 0) { digitalWrite(cfg.sirenPin, cfg.sirenActiveLow ? HIGH : LOW); pinMode(cfg.sirenPin, OUTPUT); }
   live.pinWarning = warn;
   if (warn.length()) logEvent("warning", "pins", warn);
 }

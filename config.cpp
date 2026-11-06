@@ -46,6 +46,7 @@ static void addActions(const String &g, const String &k, Actions &a) {
   add(g, k + "_video", "Record video clip", 'b', &a.video);
   add(g, k + "_audio", "Record audio clip", 'b', &a.audio);
   add(g, k + "_notify", "Send Telegram alert", 'b', &a.notify);
+  add(g, k + "_siren", "Ring the alarm bell", 'b', &a.siren);
 }
 
 static const char *PULL_OPTS = "0:No pull (external resistor)|1:Pull-up (switch to GND)|2:Pull-down (switch to 3V3)";
@@ -150,6 +151,36 @@ void buildFields() {
   add(g, "sonarEcho", "ECHO pin (via 5V->3.3V divider!)", 'p', &cfg.sonarEcho);
   add(g, "sonarCm", "Trigger when something is closer than (cm)", 'i', &cfg.sonarCm, 5, 400);
   addActions(g, "sonar", cfg.sonarAct);
+
+  g = "The Night Watch (IR lamp & black and white)";
+  add(g, "nightMode", "Night watch", 'e', &cfg.nightMode, 0, 0, "0:Off|1:When it gets dark (light level)|2:By the clock|3:Always on",
+      "The light level is shown on The Scene next to the Night Watch lamp. If your IR lamp lights the room so well that it looks like day, use By the clock.");
+  add(g, "nightBelow", "Night begins below light level", 'i', &cfg.nightBelow, 0, 255);
+  add(g, "nightAbove", "Day returns above light level", 'i', &cfg.nightAbove, 0, 255, nullptr,
+      "Keep this well above the night level so the lamp does not flicker on and off.");
+  add(g, "nightFrom", "By the clock: night from (HHMM)", 'i', &cfg.nightFrom, 0, 2359);
+  add(g, "nightTo", "By the clock: night until (HHMM)", 'i', &cfg.nightTo, 0, 2359);
+  add(g, "nightBW", "Black and white picture at night (less colour noise)", 'b', &cfg.nightBW);
+  add(g, "irPin", "IR lamp output pin (HIGH = lamp on)", 'p', &cfg.irPin, 0, 0, nullptr,
+      "Drive the IR LEDs through a transistor or MOSFET, never straight from the pin. The OV3660 sees IR only if the lens has no IR-cut filter.");
+
+  g = "The Alarm Bell (siren, buzzer or LED)";
+  add(g, "sirenPin", "Output pin", 'p', &cfg.sirenPin, 0, 0, nullptr,
+      "A buzzer or LED can hang on the pin with a resistor; a real siren needs a transistor, MOSFET or relay module. Tick Ring the alarm bell under each sensor that should ring it.");
+  add(g, "sirenActiveLow", "Pin goes LOW to ring (many relay boards)", 'b', &cfg.sirenActiveLow);
+  add(g, "sirenSec", "Ring for (s)", 'i', &cfg.sirenSec, 1, 300);
+  add(g, "sirenStyle", "Sound", 'e', &cfg.sirenStyle, 0, 0, "0:Steady|1:Slow beep|2:Fast blink");
+
+  g = "The Diogenes Club (MQTT & Home Assistant)";
+  add(g, "mqttEn", "Report to an MQTT broker", 'b', &cfg.mqttEn);
+  add(g, "mqttHost", "Broker address (IP or name)", 's', cfg.mqttHost, 0, sizeof(cfg.mqttHost), nullptr,
+      "Home Assistant: install the Mosquitto broker add-on and the MQTT integration, then enter the Home Assistant IP here.");
+  add(g, "mqttPort", "Port", 'i', &cfg.mqttPort, 1, 65535);
+  add(g, "mqttUser", "User name", 's', cfg.mqttUser, 0, sizeof(cfg.mqttUser));
+  add(g, "mqttPass", "Password", 'w', cfg.mqttPass, 0, sizeof(cfg.mqttPass));
+  add(g, "mqttBase", "Topic prefix", 's', cfg.mqttBase, 0, sizeof(cfg.mqttBase), nullptr,
+      "Publishes PREFIX/state, PREFIX/event and PREFIX/clue. Listens on PREFIX/set/armed, PREFIX/set/siren (ON or OFF) and PREFIX/set/test.");
+  add(g, "mqttHa", "Announce to Home Assistant (auto discovery)", 'b', &cfg.mqttHa);
 }
 
 static void writeField(JsonObject o, const Field &f, bool forWeb) {

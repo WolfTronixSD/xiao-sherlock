@@ -121,6 +121,9 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
     <div><span class="lamp" id="recV"></span><span id="recVTxt">The camera obscura rests</span></div>
     <div style="margin-top:8px"><b>Tripwires</b><div id="inputs"></div></div>
     <div id="sonarBox"></div>
+    <div style="margin-top:8px"><span class="lamp" id="nightL"></span><b>The Night Watch</b> <span id="nightTxt"></span></div>
+    <div><span class="lamp" id="bellL"></span><b>The Alarm Bell</b> <span id="bellTxt"></span>
+     <button class="btn plain" id="bellBtn" onclick="bell()">Ring it</button></div>
     <div id="warn" style="color:var(--red)"></div>
    </div>
    <div class="card"><h2>&#129658; The Doctor's Report</h2><table class="health" id="health"></table>
@@ -237,6 +240,10 @@ async function status(){try{st=await (await api('/api/status')).json()}catch(e){
  $('inputs').innerHTML=st.inputs.filter(i=>i.en).map(i=>`<div><span class="lamp ${i.level==1?'hi':i.level==0?'lo':''}"></span>${esc(i.name)} <span class="small">${esc(i.pin)}: ${i.level==1?'HIGH':i.level==0?'LOW':'?'}</span></div>`).join('')||'<div class="small">None strung. See Instructions to Watson.</div>';
  $('sonarBox').innerHTML=st.sonarEn?`<div style="margin-top:8px"><b>The Bat Ears</b> ${st.sonarCm<0?'nothing in range':st.sonarCm+' cm'} <span class="small">(trigger under ${st.sonarLimit} cm)</span></div>`:'';
  $('warn').textContent=st.warn||'';
+ const NM=['off','when dark','by the clock','always'];
+ $('nightL').className='lamp'+(st.night?' hi':'');$('nightTxt').innerHTML=(st.night?'on duty':'resting')+` <span class="small">(${NM[st.nightMode]||'?'}, light level ${st.light<0?'?':st.light}${st.irPin?', IR lamp on '+esc(st.irPin):''})</span>`;
+ $('bellL').className='lamp'+(st.siren?' rec':'');$('bellTxt').innerHTML=(st.siren?'RINGING':'silent')+` <span class="small">${st.sirenPin?esc(st.sirenPin):'(no pin set)'}</span>`;
+ $('bellBtn').textContent=st.siren?'Silence it':'Ring it';
  drawRadar();health();
  if(st.motionEn===false)$('motionNote').textContent='Motion detection is off - switch it on under Instructions to Watson.';else $('motionNote').textContent='Whole picture changed: '+st.motionGlobal+'%';
  zones.forEach((z,i)=>{const c=$('zp'+i),m=$('zm'+i),v=st.motion[i]||0;if(c)c.textContent=v+'%';
@@ -301,6 +308,7 @@ async function saveZones(){try{await api('/api/config',{method:'POST',body:JSON.
 
 // ---------- arm / test ----------
 async function toggleArm(){const on=st.armed?0:1;await api('/api/arm?on='+on,{method:'POST'});toast(on?'The game is afoot!':'Holmes retires to his violin.');status()}
+async function bell(){try{await api('/api/siren?on='+(st.siren?0:1),{method:'POST'});toast(st.siren?'Silence in the house.':'Ring the bell, Watson!');status()}catch(e){toast(e.message)}}
 async function test(){await api('/api/test',{method:'POST'});toast(pick(REMARKS.test))}
 
 // ---------- case log ----------
@@ -410,7 +418,10 @@ const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slip
  ['Watching Brief','&#128065;&#65039;&#128373;&#65039;','Spots movement in the places of interest you marked on The Scene.'],
  ['Tripwire','&#129700;&#128682;','Doors, PIRs and buttons. One wire, one suspect.'],
  ['Radar','&#128752;&#65039;&#127787;&#65039;','Sees people through the London fog (and thin walls).'],
- ['Bat Ears','&#129415;&#128266;','Squeaks at things and listens for the echo. The bat insists on a 5V-to-3.3V divider.']];
+ ['Bat Ears','&#129415;&#128266;','Squeaks at things and listens for the echo. The bat insists on a 5V-to-3.3V divider.'],
+ ['Night Watch','&#127769;&#128294;','When the gas lamps go out, Holmes lights his secret lantern and sees in black and white.'],
+ ['Alarm Bell','&#128680;&#128276;','A bell loud enough to wake Mycroft. Rings when a sensor with Ring the alarm bell ticked fires.'],
+ ['Diogenes Club','&#127963;&#65039;&#129323;','Mycroft never speaks, but he reads every report: MQTT and Home Assistant.']];
 function field(f){const v=cfg[f.k],id='f_'+f.k;let input;
  if(f.t=='b')input=`<input type="checkbox" id="${id}" ${v?'checked':''}>`;
  else if(f.t=='i'&&f.max-f.min<=200)input=`<span style="display:flex;gap:6px;align-items:center"><input type="range" value="${v}" min="${f.min}" max="${f.max}" style="width:130px;accent-color:var(--red)"
@@ -452,6 +463,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['2.9','2026-11-06','The Hound in the Dark',['The Night Watch: switches to black and white and lights an IR lamp when it gets dark, by the clock, or always','Light level shown live on The Scene and written to the case log','The Alarm Bell: a siren, buzzer or LED output, steady or beeping, rung by any sensor you choose; silenced when disarmed','The Diogenes Club: MQTT with Home Assistant auto discovery (armed switch, alarm bell, test button, clue, loudness, light, temperature and more)']],
  ['2.8','2026-11-05',"The Doctor's Report",['Health panel on The Scene: Wi-Fi, chip temperature, uptime, memory, PSRAM, card and restarts, each with a lamp','Restarts are counted and their reason is shown and written to the case log']],
  ['2.7','2026-11-05','The Tidy Lodger',['When the card is over 90% full (adjustable) the oldest days are deleted until there is room','Today and the case log are never touched; each clean-up is written in the case log']],
  ['2.6','2026-11-05',"Mrs Hudson's Timetable",['Arm and disarm on a daily schedule; the button still wins until the next scheduled minute','Watches for your phone on the Wi-Fi: arms when it leaves, disarms when it comes back','The morning disarm is skipped while the phone is out']],
@@ -482,6 +494,7 @@ function health(){if(!$('health')||st.tempC==null)return;const up=st.uptime,d=Ma
   ['PSRAM free',(st.psram/1024).toFixed(1)+' MB',st.psram>1024?0:st.psram>256?1:2],
   ['SD card',st.sd?(st.totalMB?`${usedPct}% used, ${(st.freeMB/1024).toFixed(1)} GB free`:st.freeMB+' MB free'):'missing!',!st.sd?2:usedPct<85?0:usedPct<95?1:2],
   ['Restarts',`#${st.boots}, last: ${esc(st.reset)}`,/crash|watchdog|brownout/.test(st.reset)?2:0]];
+ if(st.mqtt>=0)rows.push(['MQTT broker',st.mqtt==1?'connected':'not reachable',st.mqtt==1?0:2]);
  $('health').innerHTML=rows.map(r=>`<tr><td><span class="lamp ${['lo','hi','rec'][r[2]]}"></span>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}
 function sys(){const up=st.uptime,d=Math.floor(up/86400),h=Math.floor(up%86400/3600),m=Math.floor(up%3600/60);
  $('sys').innerHTML=[['Firmware',st.fw],['Clock',st.time],['Awake for',`${d}d ${h}h ${m}m`],['SD card',st.sd?st.freeMB+' MB free':'missing!'],

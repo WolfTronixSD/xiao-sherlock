@@ -71,6 +71,7 @@ static void applyNow() {
   s->set_quality(s, cfg.jpegQuality);
   s->set_vflip(s, cfg.vflip);
   s->set_hmirror(s, cfg.hmirror);
+  s->set_special_effect(s, live.night && cfg.nightBW ? 2 : 0);  // 2 = grayscale
 }
 
 void cameraRequestPhotos(const String &tag) {
@@ -183,8 +184,8 @@ struct Avi {
 };
 
 // ---------- motion detection ----------
-// Each analysed frame is decoded at 1/8 size, turned into grey, and compared with a slowly
-// adapting background. Changed pixels are counted per zone.
+// Each analysed frame is decoded at 1/8 size, turned into grey (its average is the light level
+// for the night watch), and compared with a slowly adapting background. Changed pixels are counted per zone.
 static uint8_t *rgb = nullptr, *grey = nullptr, *bg = nullptr, *mask = nullptr;
 static int mw = 0, mh = 0;
 static bool bgValid = false;
@@ -206,6 +207,10 @@ static void analyse(camera_fb_t *fb) {
     int r = (c >> 11) << 3, g = ((c >> 5) & 63) << 2, b = (c & 31) << 3;
     grey[i] = (r * 77 + g * 150 + b * 29) >> 8;
   }
+  uint32_t sum = 0;
+  for (int i = 0; i < n; i++) sum += grey[i];
+  live.light = sum / n;  // for the night watch
+  if (!cfg.motionEn) { bgValid = false; return; }
   if (!bgValid) { memcpy(bg, grey, n); memset(mask, 0, n); bgValid = true; return; }
 
   int changed = 0;
@@ -290,7 +295,8 @@ static void cameraTask(void *) {
       xSemaphoreGive(snapLock);
     }
 
-    if (cfg.motionEn && now - lastMotion >= 250) { lastMotion = now; analyse(fb); }
+    // motion analysis 4x a second; with motion off still measure the light every 2 s for the night watch
+    if (now - lastMotion >= (cfg.motionEn ? 250u : 2000u)) { lastMotion = now; analyse(fb); }
 
     // video
     portENTER_CRITICAL(&reqMux);

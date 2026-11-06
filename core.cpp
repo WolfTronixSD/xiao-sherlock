@@ -154,6 +154,7 @@ String sensorSnapshot() {
     s += ", radar " + String(n) + " target(s)";
   }
   if (cfg.sonarEn) s += ", sonar " + String(live.sonarCm) + " cm";
+  if (live.light >= 0) s += ", light " + String(live.light) + (live.night ? " (night)" : "");
   return s;
 }
 
@@ -161,6 +162,7 @@ String sensorSnapshot() {
 void setArmed(bool on, const String &who, const String &why) {
   cfg.armed = on;
   saveConfig();
+  if (!on) sirenStop("disarmed");
   logEvent("config", who, String(on ? "ARMED - the game is afoot" : "disarmed - Holmes is off duty") + (why.length() ? ", " + why : ""));
 }
 
@@ -205,7 +207,10 @@ void raiseEvent(Source src, const String &who, const String &detail) {
   if (a.video) what += "video ";
   if (a.audio) what += "audio ";
   if (a.notify && telegramReady()) what += "telegram ";
+  if (a.siren) what += "alarm-bell ";
   logEvent(sourceName(src), who, detail + " | " + sensorSnapshot() + (what.length() ? " | recording " + what : ""));
+  mqttEvent(sourceName(src), who, detail);
+  if (a.siren) sirenSound(cfg.sirenSec, String(who) + " - " + detail);
   if (a.photo) cameraRequestPhotos(tag);
   if (a.video) cameraRequestVideo(tag);
   if (a.notify) telegramAlert(String("\xF0\x9F\x95\xB5 221B: ") + who + " - " + detail + "\n" + clockText() + "\n" + sensorSnapshot(), true, src == SRC_TEST);
