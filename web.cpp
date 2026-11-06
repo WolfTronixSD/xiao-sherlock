@@ -27,6 +27,7 @@ static volatile uint32_t lastRequest = 0;  // for camp mode: stay awake while so
 uint32_t webLastRequest() { return lastRequest; }
 bool webBusy() { return strcmp((const char *)webWhere, "idle") != 0; }
 static void webWatchdog(void *);
+static void webTask(void *);
 
 #define ROUTE(path, method, body) server.on(path, method, [] { webWhere = path; if (auth()) { body; } })
 
@@ -424,6 +425,18 @@ void webStart() {
   server.begin();
   webAlive();
   xTaskCreatePinnedToCore(webWatchdog, "webdog", 4096, nullptr, 1, nullptr, 0);
+  xTaskCreatePinnedToCore(webTask, "web", 12288, nullptr, 2, nullptr, 0);
+}
+
+// The web page runs in its own task on core 0. In the Arduino loop() (core 1, lowest priority) it starved
+// whenever the camera, microphone and sensors on core 1 were busy recording, and the page timed out.
+static void webTask(void *) {
+  uint32_t lastFlush = 0;
+  for (;;) {
+    webLoop();
+    if (millis() - lastFlush > 1000) { lastFlush = millis(); flushEvents(); }
+    delay(2);
+  }
 }
 
 // If the web loop has not come round for 45 s, say where it was stuck and restart, so the page always comes back

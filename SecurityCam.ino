@@ -127,8 +127,5 @@ void setup() {
 }
 
 void loop() {
-  static uint32_t lastFlush = 0;
-  webLoop();
-  if (millis() - lastFlush > 1000) { lastFlush = millis(); flushEvents(); }
-  delay(2);
+  delay(1000);  // the web page and the case log run in their own task (see web.cpp)
 }

@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.3 (2026-11-06): The Page That Would Not Starve
+- The web page and case log run in their own task on core 0, so the page stays responsive while the camera, microphone and sensors on core 1 are busy recording
+
 ## 3.2 (2026-11-06): The Return of the Wireless
 - On the hotspot, the house retries your Wi-Fi once a minute and switches back by itself (skipped while a phone is on the hotspot)
 - Firmware upload refuses the 8 MB full USB image and stops at the first failed write instead of hanging the page
