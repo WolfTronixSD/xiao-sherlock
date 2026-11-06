@@ -41,6 +41,34 @@ static void countBoot() {
   }
 }
 
+static void wifiReady() {
+  configTzTime(cfg.tz, "pool.ntp.org", "time.nist.gov");
+  MDNS.begin(cfg.hostname);
+  MDNS.addService("http", "tcp", 80);
+  Serial.printf("221B is open for business: http://%s  or  http://%s.local\n", WiFi.localIP().toString().c_str(), cfg.hostname);
+}
+
+// In hotspot mode keep trying the home Wi-Fi once a minute (e.g. the router was rebooting or its
+// 2.4 GHz band was off), but never while a phone is on the hotspot, because each try makes the hotspot hiccup.
+static void wifiRetryTask(void *) {
+  for (;;) {
+    vTaskDelay(pdMS_TO_TICKS(60000));
+    if (WiFi.status() == WL_CONNECTED || WiFi.softAPgetStationNum() > 0) continue;
+    const char *s = cfg.wifiSsid, *p = cfg.wifiPass;
+#ifdef WIFI_SSID
+    if (!*s) { s = WIFI_SSID; p = WIFI_PASSWORD; }
+#endif
+    WiFi.begin(s, p);
+    for (int i = 0; i < 30 && WiFi.status() != WL_CONNECTED; i++) vTaskDelay(pdMS_TO_TICKS(500));
+    if (WiFi.status() != WL_CONNECTED) { WiFi.disconnect(); continue; }
+    wifiReady();
+    logEvent("config", "Holmes", String("back on Wi-Fi ") + s + " at " + WiFi.localIP().toString() + ", hotspot closed");
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_STA);
+    vTaskDelete(nullptr);
+  }
+}
+
 static void startWifi() {
   const char *s = cfg.wifiSsid, *p = cfg.wifiPass;
 #ifdef WIFI_SSID
@@ -56,14 +84,12 @@ static void startWifi() {
     Serial.println();
   }
   if (WiFi.status() == WL_CONNECTED) {
-    configTzTime(cfg.tz, "pool.ntp.org", "time.nist.gov");
-    MDNS.begin(cfg.hostname);
-    MDNS.addService("http", "tcp", 80);
-    Serial.printf("221B is open for business: http://%s  or  http://%s.local\n", WiFi.localIP().toString().c_str(), cfg.hostname);
+    wifiReady();
   } else {
-    WiFi.mode(WIFI_AP);
+    WiFi.mode(*s ? WIFI_AP_STA : WIFI_AP);
     WiFi.softAP("Baker-Street-221B");
     Serial.printf("No Wi-Fi. Join hotspot 'Baker-Street-221B' and open http://%s\n", WiFi.softAPIP().toString().c_str());
+    if (*s) xTaskCreatePinnedToCore(wifiRetryTask, "wifiretry", 4096, nullptr, 1, nullptr, 0);
   }
 }
 
