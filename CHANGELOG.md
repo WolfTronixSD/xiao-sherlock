@@ -2,6 +2,11 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.1 (2026-11-06): A Study in Scarlet (and Green, and Blue)
+- Instructions to Watson: coloured tiles with big icons to jump to each section; a green dot shows which are switched on
+- Each section has its own colour, big icon and ON/off badge, opens and closes with a tap, and has its own Seal and send button
+- A back-to-the-tiles button in the corner
+
 ## 3.0 (2026-11-06): The Adventure of the Sleeping Detective
 - Camp mode: deep sleep on a battery; the PIR (wake pin) wakes it, it records photos/video/audio to SD with no Wi-Fi, then sleeps again once quiet
 - Press BOOT to wake it with the hotspot Baker-Street-221B (or home Wi-Fi if in range); it stays awake while someone is looking at the page

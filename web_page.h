@@ -54,7 +54,23 @@ td{border-bottom:1px dotted #b9a171;padding:5px 4px;vertical-align:top}
 .k-sound{background:#5c3b7a}.k-motion{background:#8a5a14}.k-radar{background:#1d5c63}.k-sonar{background:#3b4f8a}.k-test{background:#555}
 .k-saved{background:var(--green)}.k-error,.k-warning{background:var(--red)}.k-input1,.k-input2,.k-input3,.k-input4{background:#7b1e1e}
 .quote{font-style:italic;color:var(--faded);font-size:12px}
-fieldset{border:1px solid #cdb98c;border-radius:6px;margin:0 0 12px;padding:8px 12px;background:var(--card)}
+fieldset{border:1px solid #cdb98c;border-left:10px solid var(--sc,#6b5536);border-radius:8px;margin:0 0 14px;padding:0;background:var(--card);scroll-margin-top:90px}
+details.sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:10px 12px;background:linear-gradient(90deg,color-mix(in srgb,var(--sc) 22%,transparent),transparent);border-radius:0 8px 8px 0}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary .ico{font-size:36px;line-height:1;filter:drop-shadow(1px 2px 0 rgba(0,0,0,.15))}
+details.sec>summary .ttl{font-family:'IM Fell English SC',serif;font-size:20px;color:var(--sc);flex:1}
+details.sec>summary .arw{font-size:20px;color:var(--sc);transition:transform .2s}
+details.sec[open]>summary .arw{transform:rotate(90deg)}
+details.sec>.body{padding:4px 14px 12px}
+.onoff{font-size:11px;font-family:'Libre Baskerville',serif;padding:2px 8px;border-radius:10px;background:#d8ccb0;color:#6b5536;white-space:nowrap}
+.onoff.on{background:#2e7d32;color:#fff}
+.jump{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;padding:4px 0;margin-bottom:10px}
+.totop{position:fixed;right:14px;bottom:14px;z-index:9;border-radius:50%;width:46px;height:46px;font-size:20px;box-shadow:2px 3px 0 rgba(0,0,0,.25)}
+.jump button{border:0;border-radius:10px;padding:8px 4px 6px;cursor:pointer;color:#fff;background:var(--sc);box-shadow:2px 3px 0 rgba(0,0,0,.18);font-family:'Libre Baskerville',serif;font-size:11.5px;line-height:1.2;position:relative}
+.jump button .ico{display:block;font-size:30px;margin-bottom:3px}
+.jump button .dot{position:absolute;top:5px;right:6px;width:9px;height:9px;border-radius:50%;background:#bbb;border:1px solid #fff}
+.jump button .dot.on{background:#5be35b}
+@media(max-width:600px){.jump{grid-template-columns:repeat(4,1fr);gap:5px}.jump button{font-size:10px;padding:6px 2px}.jump button .ico{font-size:24px}}
 legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
 .f{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;border-bottom:1px dotted #d6c49a}
 .f label{flex:1}.f input[type=text],.f input[type=password],.f input[type=number],.f select{width:220px;max-width:55vw;font-family:inherit;font-size:13px;
@@ -175,7 +191,11 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
 <section class="tab" id="t-settings">
  <div class="card"><h2>Instructions to Watson</h2>
   <div class="small">Every setting is kept on the device and survives a restart. Pins D8-D10 belong to the SD card and are not offered.</div></div>
+ <div class="jump" id="jump"></div>
+ <div class="row" style="margin:-4px 0 8px"><button class="btn plain" onclick="openAll(true)">Open all</button><button class="btn plain" onclick="openAll(false)">Close all</button>
+  <span class="small">Tap a tile to jump to its section. Green dot = switched on.</span></div>
  <div id="form"></div>
+ <button class="btn totop" onclick="$('jump').scrollIntoView({behavior:'smooth'})" title="Back to the tiles">&#11014;&#65039;</button>
  <div class="card row"><button class="btn" id="sealBtn" disabled onclick="saveSettings()">Seal and send the instructions</button><span class="small" id="saveMsg"></span></div>
  <div class="card"><h2>The Telegram Boy</h2>
   <div class="small">1. In Telegram open <b>@BotFather</b>, send <b>/newbot</b>, pick a name, paste the token into "The Telegram Boy" section above, tick <i>Send Telegram alerts</i>, and press Seal and send.<br>
@@ -412,26 +432,40 @@ async function loadSettings(){setLoaded=false;$('sealBtn').disabled=true;let s,c
  if(!c||!s){$('saveMsg').innerHTML='Could not fetch the settings. <button class="btn plain" onclick="loadSettings()">Try again</button>';return}
  pins=s.find(x=>x.pins).pins;schema=s.filter(x=>x.k);cfg=c;zones=cfg.zones.filter(z=>z.w>0);
  const groups={};schema.forEach(f=>(groups[f.g]=groups[f.g]||[]).push(f));
- $('form').innerHTML=Object.keys(groups).map(g=>{const s=SECTION.find(x=>g.includes(x[0]))||['','&#128269;',''];
-  return `<fieldset><legend>${s[1]} ${esc(g)}</legend><div class="help">${s[2]}</div>${groups[g].map(field).join('')}</fieldset>`}).join('');
+ const keys=Object.keys(groups),secOf=g=>SECTION.find(x=>g.includes(x[0]))||['','&#128269;','','More','#6b5536'];
+ // a section counts as "on" when its first tick box is ticked (Detect motion, Radar enabled, ...); "Armed" for HQ
+ const onOf=g=>{const b=groups[g].find(f=>f.t=='b');return b?!!cfg[b.k]:null};
+ $('jump').innerHTML=keys.map((g,i)=>{const s=secOf(g),on=onOf(g),n=(g.match(/Tripwire (\d)/)||[])[1];
+  return `<button style="--sc:${s[4]}" onclick="jumpTo(${i})"><span class="ico">${s[1]}</span>${s[3]}${n?' '+n:''}${on==null?'':`<i class="dot ${on?'on':''}"></i>`}</button>`}).join('');
+ $('form').innerHTML=keys.map((g,i)=>{const s=secOf(g),on=onOf(g);
+  return `<fieldset id="sec${i}" style="--sc:${s[4]}"><details class="sec"${i==0?' open':''}><summary><span class="ico">${s[1]}</span><span class="ttl">${esc(g)}</span>${on==null?'':`<span class="onoff ${on?'on':''}">${on?'ON':'off'}</span>`}<span class="arw">&#9654;</span></summary>
+   <div class="body"><div class="help">${s[2]}</div>${groups[g].map(field).join('')}
+   <div class="row" style="margin-top:8px"><button class="btn seal" onclick="saveSettings()">&#128367;&#65039; Seal and send</button><span class="small secmsg"></span></div></div></details></fieldset>`}).join('');
  const w=$('f_wifiSsid');if(w&&!w.value&&st.ssid)w.placeholder='now: '+st.ssid+' (built in at compile time)';
  setLoaded=true;$('sealBtn').disabled=false;$('saveMsg').textContent=''}
-// icon and tagline per settings section (matched by a word in the section title)
-const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slippers, his violin and the master switch.'],
- ['Schedule','&#128197;&#128373;&#65039;','Mrs. Hudson locks up at night and unlocks when you come home. She notices your phone.'],
- ['Telegraph Office','&#128225;&#9749;','How the house talks to the outside world. Leave Wi-Fi blank to keep the built-in network.'],
- ['Telegram Boy','&#128692;&#128232;','A lad on a bicycle who rushes news to your pocket. Faster than Royal Mail.'],
- ['Camera Obscura','&#128247;&#127913;','The all-seeing eye. Does not blink, does not sleep, does not take biscuits.'],
- ['Listening Post','&#128066;&#127908;','Hears coughs, creaks and confessions.'],
- ['Watching Brief','&#128065;&#65039;&#128373;&#65039;','Spots movement in the places of interest you marked on The Scene.'],
- ['Tripwire','&#129700;&#128682;','Doors, PIRs and buttons. One wire, one suspect.'],
- ['Radar','&#128752;&#65039;&#127787;&#65039;','Sees people through the London fog (and thin walls).'],
- ['Bat Ears','&#129415;&#128266;','Squeaks at things and listens for the echo. The bat insists on a 5V-to-3.3V divider.'],
- ['Night Watch','&#127769;&#128294;','When the gas lamps go out, Holmes lights his secret lantern and sees in black and white.'],
- ['Alarm Bell','&#128680;&#128276;','A bell loud enough to wake Mycroft. Rings when a sensor with Ring the alarm bell ticked fires.'],
- ['Pigeon Post','&#128038;&#128225;','Carrier pigeons with LoRa radios. Flies miles over the woods with no Wi-Fi and no phone signal.'],
- ['Camp','&#9978;&#65039;&#128164;','Holmes on holiday: sleeps on a battery, wakes for intruders, opens the hotspot when you press BOOT.'],
- ['Diogenes Club','&#127963;&#65039;&#129323;','Mycroft never speaks, but he reads every report: MQTT and Home Assistant.']];
+// after saving, refresh the ON/off badges and the green dots on the tiles
+function refreshOnOff(){const groups={};schema.forEach(f=>(groups[f.g]=groups[f.g]||[]).push(f));
+ Object.keys(groups).forEach((g,i)=>{const b=groups[g].find(f=>f.t=='b');if(!b)return;const on=$('f_'+b.k).checked,sec=$('sec'+i);
+  const o=sec&&sec.querySelector('.onoff');if(o){o.textContent=on?'ON':'off';o.classList.toggle('on',on)}
+  const d=$('jump').children[i]&&$('jump').children[i].querySelector('.dot');if(d)d.classList.toggle('on',on)})}
+function jumpTo(i){const f=$('sec'+i);f.querySelector('details').open=true;f.scrollIntoView({behavior:'smooth',block:'start'})}
+function openAll(o){document.querySelectorAll('#form details').forEach(d=>d.open=o)}
+// icon, tagline, tile label and colour per settings section (matched by a word in the section title)
+const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slippers, his violin and the master switch.','HQ','#7b1e1e'],
+ ['Timetable','&#128197;&#128373;&#65039;','Mrs. Hudson locks up at night and unlocks when you come home. She notices your phone.','Timetable','#8e5a1e'],
+ ['Telegraph Office','&#128225;&#9749;','How the house talks to the outside world. Leave Wi-Fi blank to keep the built-in network.','Wi-Fi','#1f5f8b'],
+ ['Telegram Boy','&#128692;&#128232;','A lad on a bicycle who rushes news to your pocket. Faster than Royal Mail.','Telegram','#2a8bc9'],
+ ['Camera Obscura','&#128247;&#127913;','The all-seeing eye. Does not blink, does not sleep, does not take biscuits.','Camera','#5b3f8c'],
+ ['Listening Post','&#128066;&#127908;','Hears coughs, creaks and confessions.','Sound','#b5651d'],
+ ['Watching Brief','&#128065;&#65039;&#128373;&#65039;','Spots movement in the places of interest you marked on The Scene.','Motion','#2e7d32'],
+ ['Tripwire','&#129700;&#128682;','Doors, PIRs and buttons. One wire, one suspect.','Tripwire','#a33b3b'],
+ ['Radar','&#128752;&#65039;&#127787;&#65039;','Sees people through the London fog (and thin walls).','Radar','#00796b'],
+ ['Bat Ears','&#129415;&#128266;','Squeaks at things and listens for the echo. The bat insists on a 5V-to-3.3V divider.','Ultrasonic','#6d4c41'],
+ ['Night Watch','&#127769;&#128294;','When the gas lamps go out, Holmes lights his secret lantern and sees in black and white.','Night','#283593'],
+ ['Alarm Bell','&#128680;&#128276;','A bell loud enough to wake Mycroft. Rings when a sensor with Ring the alarm bell ticked fires.','Alarm bell','#c62828'],
+ ['Pigeon Post','&#128038;&#128225;','Carrier pigeons with LoRa radios. Flies miles over the woods with no Wi-Fi and no phone signal.','LoRa','#558b2f'],
+ ['Camp','&#9978;&#65039;&#128164;','Holmes on holiday: sleeps on a battery, wakes for intruders, opens the hotspot when you press BOOT.','Camp','#33691e'],
+ ['Diogenes Club','&#127963;&#65039;&#129323;','Mycroft never speaks, but he reads every report: MQTT and Home Assistant.','MQTT / HA','#455a64']];
 function field(f){const v=cfg[f.k],id='f_'+f.k;let input;
  if(f.t=='b')input=`<input type="checkbox" id="${id}" ${v?'checked':''}>`;
  else if(f.t=='i'&&f.max-f.min<=200)input=`<span style="display:flex;gap:6px;align-items:center"><input type="range" value="${v}" min="${f.min}" max="${f.max}" style="width:130px;accent-color:var(--red)"
@@ -443,7 +477,8 @@ function field(f){const v=cfg[f.k],id='f_'+f.k;let input;
  return `<div class="f"><label for="${id}">${esc(f.l)}</label>${input}</div>${f.h?`<div class="help">${esc(f.h)}</div>`:''}`}
 async function saveSettings(){if(!setLoaded||!schema.length){toast('The settings have not loaded yet.');return}
  const o={};schema.forEach(f=>{const e=$('f_'+f.k);if(!e)return;o[f.k]=f.t=='b'?e.checked:(f.t=='s'||f.t=='w')?e.value:+e.value});
- try{const r=await (await api('/api/config',{method:'POST',body:JSON.stringify(o)})).text();$('saveMsg').textContent='Sealed and delivered.';toast('Watson has the instructions.');
+ try{const r=await (await api('/api/config',{method:'POST',body:JSON.stringify(o)})).text();$('saveMsg').textContent='Sealed and delivered.';toast('Watson has the instructions.');refreshOnOff();
+  document.querySelectorAll('.secmsg').forEach(e=>{e.textContent='Sealed and delivered.';setTimeout(()=>e.textContent='',4000)});
   if(r=='restart'&&confirm('Network settings changed. Restart now to use them?'))restart();status()}catch(e){$('saveMsg').textContent='Failed: '+e.message}}
 
 // ---------- telegram ----------
@@ -473,6 +508,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.1','2026-11-06','A Study in Scarlet (and Green, and Blue)',['Instructions to Watson: a big coloured tile per section to jump straight to it, with a green dot when it is switched on','Each section has its own colour, a big icon, an ON/off badge, opens and closes with a tap, and has its own Seal and send button','Back-to-the-tiles button in the corner']],
  ['3.0','2026-11-06','The Adventure of the Sleeping Detective',['Camp mode: deep sleep on a battery, wakes on the PIR, records with no Wi-Fi and sleeps again when quiet','Press BOOT to wake it with the hotspot Baker-Street-221B (or your Wi-Fi) and look at the evidence','The Pigeon Post: alerts over a Meshtastic LoRa radio on a UART, with a test button','Optional heartbeat over LoRa with battery voltage and card space','Battery voltage in the health panel and a Send Holmes to sleep now button','The visiting phone sets the clock when there is no internet']],
  ['2.9','2026-11-06','The Hound in the Dark',['The Night Watch: switches to black and white and lights an IR lamp when it gets dark, by the clock, or always','Light level shown live on The Scene and written to the case log','The Alarm Bell: a siren, buzzer or LED output, steady or beeping, rung by any sensor you choose; silenced when disarmed','The Diogenes Club: MQTT with Home Assistant auto discovery (armed switch, alarm bell, test button, clue, loudness, light, temperature and more)']],
  ['2.8','2026-11-05',"The Doctor's Report",['Health panel on The Scene: Wi-Fi, chip temperature, uptime, memory, PSRAM, card and restarts, each with a lamp','Restarts are counted and their reason is shown and written to the case log']],
