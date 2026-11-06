@@ -384,10 +384,14 @@ static void handleUpdateUpload() {
     logEvent("update", "web", "firmware upload " + u.filename);
     Update.begin(UPDATE_SIZE_UNKNOWN);
   } else if (u.status == UPLOAD_FILE_WRITE) {
-    Update.write(u.buf, u.currentSize);
+    // a wrong file (e.g. the 8 MB full USB image): stop writing at the first error instead of chewing through it
+    if (!Update.hasError() && Update.write(u.buf, u.currentSize) != u.currentSize) {
+      logEvent("error", "web", String("firmware upload refused: ") + Update.errorString());
+      Update.abort();
+    }
     webAlive();
   } else if (u.status == UPLOAD_FILE_END) {
-    Update.end(true);
+    if (!Update.hasError()) Update.end(true);
   }
 }
 

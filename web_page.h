@@ -551,7 +551,8 @@ function health(){if(!$('health')||st.tempC==null)return;const up=st.uptime,d=Ma
 function sys(){const up=st.uptime,d=Math.floor(up/86400),h=Math.floor(up%86400/3600),m=Math.floor(up%3600/60);
  $('sys').innerHTML=[['Firmware',st.fw],['Clock',st.time],['Awake for',`${d}d ${h}h ${m}m`],['SD card',st.sd?st.freeMB+' MB free':'missing!'],
  ['Wi-Fi signal',st.rssi+' dBm'],['Free memory',st.heap+' KB RAM, '+st.psram+' KB PSRAM']].map(r=>`<tr><td>${r[0]}</td><td>${esc(r[1])}</td></tr>`).join('')}
-function ota(){const f=$('fw').files[0];if(!f){toast('Choose a .bin first.');return}const x=new XMLHttpRequest(),fd=new FormData();fd.append('fw',f);
+function ota(){const f=$('fw').files[0];if(!f){toast('Choose a .bin first.');return}
+ if(/full/i.test(f.name)||f.size>3000000){$('otaMsg').textContent='That is the full USB image ('+(f.size/1048576).toFixed(1)+' MB). Here use xiao-sherlock-ota.bin.';return}const x=new XMLHttpRequest(),fd=new FormData();fd.append('fw',f);
  x.upload.onprogress=e=>$('otaMsg').textContent=Math.round(e.loaded/e.total*100)+'%';x.onload=()=>{$('otaMsg').textContent=x.responseText;setTimeout(()=>location.reload(),8000)};
  x.open('POST','/api/update');x.send(fd)}
 async function restart(){if(!confirm('Restart the device?'))return;try{await api('/api/restart',{method:'POST'})}catch(e){}toast('Restarting... back in 15 seconds.');setTimeout(()=>location.reload(),15000)}
