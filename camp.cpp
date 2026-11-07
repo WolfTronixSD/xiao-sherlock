@@ -49,7 +49,7 @@ bool meshSend(const String &text, bool force) {
   return true;
 }
 
-// ---------- two-way: commands over LoRa ("221B <pin> <command>") ----------
+// ---------- two-way: commands over LoRa ("status", or "PIN status" when a PIN is set) ----------
 // In TEXTMSG mode the radio prints every channel message it receives as one line, usually "Name: text".
 static uint32_t snoozeUntil = 0;   // when "snooze N" re-arms by itself (0 = no snooze)
 static uint8_t badPins = 0;
@@ -81,46 +81,57 @@ static void runCommand(const String &cmd, const String &arg, const String &who) 
     reply(t);
   } else if (cmd == "ring") {
     if (!cfg.sirenEn || cfg.sirenPin < 0) reply("the alarm bell is switched off or has no pin.");
-    else { int sec = arg.toInt(); if (sec < 1 || sec > 120) sec = cfg.sirenSec; sirenSound(sec, "rung over LoRa"); reply("ringing the bell for " + String(sec) + " s."); }
+    else { int sec = arg.toInt(); if (sec < 1 || sec > 120) sec = cfg.sirenSec; reply("ringing the bell for " + String(sec) + " s."); sirenSound(sec, "rung over LoRa"); }
   } else if (cmd == "quiet") { sirenStop("silenced over LoRa"); reply("bell silenced."); }
-  else if (cmd == "photo") { cameraRequestPhotos("lora"); reply("photos going to the SD card."); }
+  else if (cmd == "photo") { reply("taking photos to the SD card."); cameraRequestPhotos("lora"); }
   else if (cmd == "sleep") {
     if (!cfg.campEn) reply("camp mode is off, so the house stays awake.");
     else { reply("going to sleep."); delay(1500); campSleepNow(); }
   } else reply("commands: arm, disarm, status, ring [s], quiet, snooze [min], photo, sleep");
 }
 
+static bool isCmd(const String &c) { for (auto k : CMDS) if (c == k) return true; return false; }
+
+// Accepted (whole message, after the radio's "Name: " prefix), case does not matter except the PIN:
+//   status | snooze 30            (no PIN set)
+//   PIN status | 221B PIN status  (PIN set; "221B" in front is optional)
 static void handleLine(String line) {
   line.trim();
   if (!line.length()) return;
-  String low = line;
+  String who, text = line, low = line;
   low.toLowerCase();
-  int at = low.indexOf("221b ");
-  if (at < 0) return;
-  String who = at >= 2 && line.substring(0, at).endsWith(": ") ? line.substring(0, at - 2) : String("");
-  who.trim();
+  if (low.startsWith("221b:") || low.indexOf(": 221b:") >= 0) return;  // the camera's own replies and alerts
+  int colon = line.indexOf(": ");
+  if (colon > 0 && colon <= 40) { who = line.substring(0, colon); text = line.substring(colon + 2); }
+  who.trim(); text.trim();
   if (who.length() > 20) who = who.substring(0, 20);
-  // tokens after "221B": pin, command, argument
-  String rest = line.substring(at + 5);
-  rest.trim();
-  int sp1 = rest.indexOf(' ');
-  if (sp1 < 0) return;
-  String pin = rest.substring(0, sp1), tail = rest.substring(sp1 + 1);
-  tail.trim();
-  int sp2 = tail.indexOf(' ');
-  String cmd = sp2 < 0 ? tail : tail.substring(0, sp2), arg = sp2 < 0 ? String("") : tail.substring(sp2 + 1);
-  cmd.toLowerCase();
-  arg.trim();
-  bool known = false;
-  for (auto c : CMDS) if (cmd == c) known = true;
-  if (!known) return;  // not a command (our own alerts start with "221B:" too)
+  // split into at most 5 words
+  String w[5]; int n = 0;
+  for (int i = 0; i < (int)text.length() && n < 5;) {
+    while (i < (int)text.length() && text[i] == ' ') i++;
+    int j = i; while (j < (int)text.length() && text[j] != ' ') j++;
+    if (j > i) w[n++] = text.substring(i, j);
+    i = j;
+  }
+  if (!n) return;
+  int k = 0;
+  String first = w[0]; first.toLowerCase();
+  if (first == "221b") k = 1;  // optional old prefix ("221B:" replies from the camera don't match)
+  String pin, cmd;
+  if (k < n) { cmd = w[k]; cmd.toLowerCase(); }
+  if (!isCmd(cmd) && k + 1 < n) { pin = w[k]; cmd = w[k + 1]; cmd.toLowerCase(); k++; }
+  if (!isCmd(cmd)) return;
+  k++;
+  String arg = k < n ? w[k] : String("");
+  if (n - k > 1) return;                            // "arm the gate later" is chat, not a command
+  if (arg.length() && arg.toInt() <= 0) return;     // the only arguments are numbers
   uint32_t now = millis();
   if (!cfg.meshCmdEn) { if (now - lastBadLog > 30000UL) { lastBadLog = now; logEvent("mesh", "LoRa", "ignored a command: two-way is switched off"); } return; }
-  if (!cfg.meshPin[0]) { if (now - lastBadLog > 30000UL) { lastBadLog = now; logEvent("mesh", "LoRa", "ignored a command: no command PIN is set"); } return; }
   if (lockedUntil && (int32_t)(lockedUntil - now) > 0) return;
-  if (pin != cfg.meshPin) {
+  if (cfg.meshPin[0] && pin != cfg.meshPin) {
     if (++badPins >= 5) { badPins = 0; lockedUntil = now + 600000UL; logEvent("mesh", "LoRa", "5 wrong PINs: commands locked for 10 minutes"); }
-    else if (now - lastBadLog > 30000UL) { lastBadLog = now; logEvent("mesh", "LoRa", "wrong PIN on a command" + (who.length() ? " from " + who : String(""))); }
+    else if (now - lastBadLog > 30000UL) { lastBadLog = now; logEvent("mesh", "LoRa", String(pin.length() ? "wrong PIN" : "no PIN") + " on a command" + (who.length() ? " from " + who : String(""))); }
+    if (!pin.length() && now - lastBadLog < 1000UL) reply("a command PIN is set: send PIN " + cmd + ", or clear the PIN in the settings.");
     return;
   }
   badPins = 0;
