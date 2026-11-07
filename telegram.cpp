@@ -6,7 +6,7 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
-struct Alert { String text; std::vector<uint8_t> photo; };
+struct Alert { String text; std::vector<uint8_t> photo; String file; };  // file: a path on the SD card
 static QueueHandle_t q = xQueueCreate(4, sizeof(Alert *));
 static uint32_t lastSent = 0;
 
@@ -65,6 +65,45 @@ static bool sendPhoto(const String &caption, const std::vector<uint8_t> &jpg, St
   return true;
 }
 
+// A file from the card (WAV or AVI) as a Telegram document, read and sent in 4 KB pieces
+static bool sendFile(const String &caption, const String &path, String &err) {
+  lockSD();
+  File f = openSD(path, FILE_READ);
+  size_t size = f ? f.size() : 0;
+  unlockSD();
+  if (!f) { err = "file not found: " + path; return false; }
+  if (size > 45UL * 1024 * 1024) { lockSD(); f.close(); unlockSD(); err = "file too big for Telegram"; return false; }
+  NetworkClientSecure c;
+  if (!connect(c)) { lockSD(); f.close(); unlockSD(); err = "cannot reach api.telegram.org"; return false; }
+  String name = path.substring(path.lastIndexOf('/') + 1);
+  const char *B = "----221BakerStreet";
+  String head = String("--") + B + "\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n" + cfg.tgChat + "\r\n" +
+                "--" + B + "\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n" + caption.substring(0, 1000) + "\r\n" +
+                "--" + B + "\r\nContent-Disposition: form-data; name=\"document\"; filename=\"" + name + "\"\r\nContent-Type: application/octet-stream\r\n\r\n";
+  String tail = String("\r\n--") + B + "--\r\n";
+  c.printf("POST /bot%s/sendDocument HTTP/1.1\r\nHost: api.telegram.org\r\nContent-Type: multipart/form-data; boundary=%s\r\n"
+           "Content-Length: %u\r\nConnection: close\r\n\r\n", cfg.tgToken, B, head.length() + size + tail.length());
+  c.print(head);
+  static uint8_t buf[4096];
+  size_t left = size;
+  bool ok = true;
+  while (left) {
+    lockSD();
+    size_t n = f.read(buf, min(left, sizeof(buf)));
+    unlockSD();
+    if (!n || c.write(buf, n) != n) { ok = false; break; }
+    left -= n;
+  }
+  lockSD();
+  f.close();
+  unlockSD();
+  if (!ok) { err = "upload cut off"; return false; }
+  c.print(tail);
+  String r = readResponse(c);
+  if (r.indexOf("\"ok\":true") < 0) { err = r.substring(0, 160); return false; }
+  return true;
+}
+
 // ---------- commands from your chat ("status", "/arm", "snooze 30"...) ----------
 // Long polling: one getUpdates request waits up to 25 s for a new message, so commands arrive at once.
 // Only one TLS connection is open at a time: a waiting alert cuts the poll short and goes first.
@@ -98,7 +137,7 @@ static void handleUpdates(const String &body) {
     time_t now = time(nullptr), sent = (time_t)m["date"].as<int64_t>();
     if (timeValid() && sent > 0 && now - sent > 120) { logEvent("telegram", "Telegram", "skipped an old command: " + text.substring(0, 40)); continue; }
     if (who.length() > 20) who = who.substring(0, 20);
-    if (!remoteCommand(text, who, tgReply)) tgReply("I only know: arm, disarm, status, ring [s], quiet, snooze [min], photo, sleep, help");
+    if (!remoteCommand(text, who, tgReply)) tgReply("I only know: arm, disarm, status, ring [s], quiet, snooze [min], photo, audio [s], video [s], sleep, help");
   }
 }
 
@@ -130,7 +169,7 @@ static void telegramTask(void *) {
   for (;;) {
     if (xQueueReceive(q, &a, commandsOn() ? 0 : pdMS_TO_TICKS(5000)) == pdTRUE) {
       String err;
-      bool ok = a->photo.size() ? sendPhoto(a->text, a->photo, err) : sendMessage(a->text, err);
+      bool ok = a->file.length() ? sendFile(a->text, a->file, err) : a->photo.size() ? sendPhoto(a->text, a->photo, err) : sendMessage(a->text, err);
       if (!ok) logEvent("error", "telegram", err);
       delete a;
       continue;
@@ -157,7 +196,7 @@ void telegramAlert(const String &text, bool withPhoto, bool force) {
   uint32_t now = millis();
   if (!force && lastSent && now - lastSent < cfg.tgGapSec * 1000UL) return;
   lastSent = now;
-  Alert *a = new Alert{text, {}};
+  Alert *a = new Alert{text, {}, ""};
   if (withPhoto && cfg.tgPhoto) cameraSnapshot(a->photo);
   if (xQueueSend(q, &a, 0) != pdTRUE) delete a;
 }
@@ -165,9 +204,24 @@ void telegramAlert(const String &text, bool withPhoto, bool force) {
 // The "photo" command from your chat: always with a photo, ignoring the gap
 void telegramPhotoNow(const String &caption) {
   if (!telegramReady()) return;
-  Alert *a = new Alert{caption, {}};
+  Alert *a = new Alert{caption, {}, ""};
   cameraSnapshot(a->photo);
+  // keep it as evidence too
+  if (a->photo.size() && live.sdOK) {
+    String path = evidencePath(stamp() + "_telegram-photo.jpg");
+    lockSD();
+    File f = openSD(path, FILE_WRITE);
+    if (f) { f.write(a->photo.data(), a->photo.size()); f.close(); }
+    unlockSD();
+    logEvent(f ? "saved" : "error", "telegram", String(f ? "photo " : "could not save ") + path.substring(path.lastIndexOf('/') + 1));
+  }
   if (xQueueSend(q, &a, 0) != pdTRUE) delete a;
+}
+
+void telegramSendFile(const String &path, const String &caption) {
+  if (!telegramReady()) return;
+  Alert *a = new Alert{caption, {}, path};
+  if (xQueueSend(q, &a, pdMS_TO_TICKS(1000)) != pdTRUE) delete a;
 }
 
 // Ask Telegram who has messaged the bot recently, to fill in the chat ID

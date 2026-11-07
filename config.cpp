@@ -108,8 +108,8 @@ void buildFields() {
   add(g, "tgPhoto", "Attach a photo", 'b', &cfg.tgPhoto);
   add(g, "tgGapSec", "At most one alert every (s)", 'i', &cfg.tgGapSec, 0, 3600);
   add(g, "tgCmdEn", "Two-way: accept commands from your chat", 'b', &cfg.tgCmdEn, 0, 0, nullptr,
-      "Send the bot status, arm, disarm, ring, quiet, snooze 30, photo, sleep or help (with or without /). Only your own chat ID is obeyed, so no PIN is needed. "
-      "Photo sends you a picture. Keeps one connection to Telegram open (about 40 KB of memory).");
+      "Send the bot status, arm, disarm, ring, quiet, snooze 30, photo, audio 5, video 5, sleep or help (with or without /). Only your own chat ID is obeyed, so no PIN is needed. "
+      "Photo, audio and video are saved to the card and sent to you. Keeps one connection to Telegram open (about 40 KB of memory).");
 
   g = "The Camera Obscura";
   static String frameOpts = String(FRAMESIZE_QVGA) + ":320x240|" + FRAMESIZE_CIF + ":400x296|" + FRAMESIZE_VGA +

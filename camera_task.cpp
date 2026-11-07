@@ -81,11 +81,11 @@ void cameraRequestPhotos(const String &tag) {
   portEXIT_CRITICAL(&reqMux);
 }
 
-void cameraRequestVideo(const String &tag) {
+void cameraRequestVideo(const String &tag, int seconds) {
   portENTER_CRITICAL(&reqMux);
   uint32_t now = millis();
   if (!videoWanted && !live.videoRec) { videoStarted = now; strlcpy(videoTag, tag.c_str(), sizeof(videoTag)); }
-  uint32_t until = now + cfg.videoSec * 1000UL;
+  uint32_t until = now + (seconds > 0 ? seconds : cfg.videoSec) * 1000UL;
   uint32_t cap = videoStarted + cfg.videoMaxSec * 1000UL;
   videoUntil = (int32_t)(until - cap) > 0 ? cap : until;
   videoWanted = true;
@@ -327,6 +327,7 @@ static void cameraTask(void *) {
       aviOpen = false;
       live.videoRec = false;
       logEvent("saved", "camera", "video " + avi.path.substring(avi.path.lastIndexOf('/') + 1) + " (" + String(avi.frames) + " frames, " + String(fps, 1) + " fps)");
+      if (avi.path.indexOf("_telegram-") >= 0) telegramSendFile(avi.path, "221B: the moving picture you asked for");
     }
 
     // photos

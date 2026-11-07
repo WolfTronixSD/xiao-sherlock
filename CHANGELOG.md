@@ -2,6 +2,10 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.12.0 (2026-11-07): Pictures by telegraph
+- Telegram `photo` also saves the picture to the SD card (`..._telegram-photo.jpg`).
+- New commands `audio [s]` (default 5 s, up to 30) and `video [s]` (default 5 s, up to 20). From Telegram the clip is saved to the card and sent to your chat as a file; over LoRa it is only saved.
+
 ## 3.11.0 (2026-11-07): The librarian and the telegraph
 - Evidence Locker: with thousands of files the file list took 25 s and the browser gave up ("The locker is jammed: Failed to fetch"), and the statistics came back empty. A background librarian now walks the card and keeps the newest 600 files and the statistics ready, so the page answers at once. The walk hands the SD card back every 64 files, so recording carries on, and picking the newest files no longer rescans the whole list for each file. The timeline only reads the chosen day's folder.
 - New file names with the weekday, easier to read: `2026_11_06_091801_Fri__motion-Biscuit-tin.avi` in the day folder `2026_11_06`. Old names and folders (`20261106_091801_...`) still show up, count and delete as before.

@@ -56,7 +56,7 @@ static bool snoozeTg = false;      // the snooze came from Telegram: say so ther
 static uint8_t badPins = 0;
 static uint32_t lockedUntil = 0, lastBadLog = 0;
 
-static const char *CMDS[] = {"arm", "disarm", "status", "ring", "quiet", "snooze", "photo", "sleep", "help"};
+static const char *CMDS[] = {"arm", "disarm", "status", "ring", "quiet", "snooze", "photo", "audio", "video", "sleep", "help"};
 
 static void reply(const String &t) { meshSend("221B: " + t, true); }  // replies skip the one-text-a-minute limit
 static void loraReply(const String &t) { reply(t); }
@@ -92,10 +92,19 @@ static void runCommand(const String &cmd, const String &arg, const String &who, 
     if (strcmp(via, "Telegram") == 0) { reply("snapping one for you."); telegramPhotoNow("221B: the scene at " + clockText()); }
     else { reply("taking photos to the SD card."); cameraRequestPhotos("lora"); }
   }
+  else if (cmd == "audio" || cmd == "video") {
+    bool tg = strcmp(via, "Telegram") == 0;
+    int sec = arg.toInt();
+    if (sec < 1) sec = 5;
+    sec = min(sec, cmd == "audio" ? 30 : 20);
+    String tag = tg ? "telegram-" + cmd : "lora-" + cmd;
+    if (cmd == "audio") audioRequest(tag, sec); else cameraRequestVideo(tag, sec);
+    reply("recording " + String(sec) + " s of " + (cmd == "audio" ? "sound" : "video") + (tg ? ", it follows in a moment." : " to the SD card."));
+  }
   else if (cmd == "sleep") {
     if (!cfg.campEn) reply("camp mode is off, so the house stays awake.");
     else { reply("going to sleep."); delay(1500); campSleepNow(); }
-  } else reply("commands: arm, disarm, status, ring [s], quiet, snooze [min], photo, sleep");
+  } else reply("commands: arm, disarm, status, ring [s], quiet, snooze [min], photo, audio [s], video [s], sleep");
 }
 
 static bool isCmd(const String &c) { for (auto k : CMDS) if (c == k) return true; return false; }
