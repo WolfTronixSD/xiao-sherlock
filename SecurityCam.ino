@@ -7,6 +7,7 @@
 //
 // Board: XIAO_ESP32S3, PSRAM: OPI PSRAM, Partition: Default with spiffs (3MB APP)
 #include <esp_heap_caps.h>
+#include "mbedtls/platform.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <time.h>
@@ -121,7 +122,15 @@ static void startWifi() {
   }
 }
 
+// Telegram's encryption (mbedTLS) asks for ~40 KB per connection and, in this core, only from the internal RAM.
+// Give it the PSRAM instead (internal only if PSRAM is full): the internal RAM hit 0 KB with the bot listening.
+static void *tlsCalloc(size_t n, size_t size) {
+  void *p = heap_caps_calloc(n, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  return p ? p : heap_caps_calloc(n, size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+}
+
 void setup() {
+  mbedtls_platform_set_calloc_free(tlsCalloc, heap_caps_free);
   // The chip has ~300 KB of fast internal RAM but 8 MB of PSRAM. Wi-Fi, the camera and every task stack need the
   // internal RAM, so send every ordinary memory request of 2 KB or more (encryption buffers for Telegram, JSON,
   // long texts, file lists) to the PSRAM. Without this the internal RAM ran out completely during Telegram sends.
