@@ -2,6 +2,11 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.9 (2026-11-07): The Baker Street Irregulars
+- The Baker Street Irregulars: counts phones, watches and trackers nearby (Bluetooth LE and Wi-Fi probe requests) and raises the alarm when more than usual show up
+- The Irregulars card on The Scene with the nearby devices and a These are mine button
+- Privacy: only a scrambled 4-character ID, signal and times are kept in RAM; nothing is stored or sent.
+
 ## 3.8 (2026-11-07): The Adventure of the Second Witness
 - The Second Witness: optionally only alarm when two different sensors fire within a few seconds (fewer false alarms from animals and wind)
 - Tripwire 4 defaults to an RCWL-0516 microwave sensor (pull-down, goes HIGH)

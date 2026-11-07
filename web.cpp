@@ -67,6 +67,7 @@ static void handleStatus() {
   d["irPin"] = cfg.irPin >= 0 ? pinName(cfg.irPin) : "";
   d["siren"] = live.siren;
   d["sirenEn"] = cfg.sirenEn;
+  d["irrEn"] = cfg.irrEn;
   d["sirenLow"] = cfg.sirenActiveLow;
   d["sirenPin"] = cfg.sirenPin >= 0 ? pinName(cfg.sirenPin) : "";
   d["mqtt"] = live.mqtt;
@@ -111,6 +112,7 @@ static void handleSaveConfig() {
   cameraApplyConfig();
   sensorsApplyConfig();
   outputsApplyConfig();
+  irregularsApplyConfig();
   setenv("TZ", cfg.tz, 1);
   tzset();
   bool netChanged = oldSsid != cfg.wifiSsid || oldPass != cfg.wifiPass || oldHost != cfg.hostname;
@@ -416,6 +418,13 @@ void webStart() {
     if (!cfg.sirenEn) sirenStop("bell switched off");
     saveConfig();
     server.send(200, "text/plain", "ok");
+  });
+  ROUTE("/api/irregulars", HTTP_GET, sendJson(irregularsJson()));
+  ROUTE("/api/irrmine", HTTP_POST, {  // "these are mine": the devices around now become the normal count
+    cfg.irrBaseline = constrain(irregularsNow(), 0, 50);
+    saveConfig();
+    logEvent("irregulars", "web", "normal count set to " + String(cfg.irrBaseline) + " devices");
+    server.send(200, "text/plain", String(cfg.irrBaseline));
   });
   ROUTE("/api/radarmm", HTTP_POST, {  // the trigger slider on The Scene: no pin restart, so the radar keeps tracking
     cfg.radarMaxMm = constrain(server.arg("mm").toInt(), 100, 6000);

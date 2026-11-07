@@ -21,7 +21,7 @@ String pinName(int pin) {
 }
 
 const char *sourceName(Source s) {
-  static const char *n[] = {"sound", "motion", "input1", "input2", "input3", "input4", "radar", "sonar", "test"};
+  static const char *n[] = {"sound", "motion", "input1", "input2", "input3", "input4", "radar", "sonar", "irregulars", "test"};
   return s < SRC_COUNT ? n[s] : "?";
 }
 
@@ -31,6 +31,7 @@ Actions actionsFor(Source s) {
     case SRC_MOTION: return cfg.motionAct;
     case SRC_RADAR:  return cfg.radarAct;
     case SRC_SONAR:  return cfg.sonarAct;
+    case SRC_IRREG:  return cfg.irrAct;
     case SRC_TEST:   return {true, true, true, true};
     default:         return cfg.in[s - SRC_INPUT1].act;
   }
@@ -160,6 +161,20 @@ void buildFields() {
   add(g, "sonarEcho", "ECHO pin (via 5V->3.3V divider!)", 'p', &cfg.sonarEcho);
   add(g, "sonarCm", "Trigger when something is closer than (cm)", 'i', &cfg.sonarCm, 5, 400);
   addActions(g, "sonar", cfg.sonarAct);
+
+  g = "The Baker Street Irregulars (phones and watches nearby)";
+  add(g, "irrEn", "Listen for phones, watches and trackers nearby", 'b', &cfg.irrEn, 0, 0, nullptr,
+      "Counts Bluetooth (BLE) devices and Wi-Fi probe requests around the house. Out in the wild there are none, so new ones mean someone is near. People without a phone or watch are invisible to it; animals never trigger it. Only counts are kept, nothing leaves the board. Uses about 40 KB of memory.");
+  add(g, "irrBle", "Listen to Bluetooth (BLE)", 'b', &cfg.irrBle);
+  add(g, "irrWifi", "Listen to Wi-Fi probe requests", 'b', &cfg.irrWifi);
+  add(g, "irrRssi", "Only count devices stronger than (dBm)", 'i', &cfg.irrRssi, -100, -30, nullptr,
+      "-50 is a few metres away, -80 tens of metres. The Scene shows the strongest devices so you can choose.");
+  add(g, "irrBaseline", "Devices normally around (yours)", 'i', &cfg.irrBaseline, 0, 50, nullptr,
+      "Press These are mine on The Scene to set it to the current count.");
+  add(g, "irrExtra", "Alarm when this many more appear", 'i', &cfg.irrExtra, 1, 10);
+  add(g, "irrHoldSec", "...and stay for at least (s)", 'i', &cfg.irrHoldSec, 5, 120, nullptr,
+      "Phones change their Bluetooth address every few minutes; waiting a little stops that from looking like a visitor.");
+  addActions(g, "irr", cfg.irrAct);
 
   g = "The Night Watch (IR lamp & black and white)";
   add(g, "nightMode", "Night watch", 'e', &cfg.nightMode, 0, 0, "0:Off|1:When it gets dark (light level)|2:By the clock|3:Always on",
