@@ -12,9 +12,9 @@ A security recorder for the **Seeed XIAO ESP32S3 Sense** that watches, listens a
 | Someone approaching | HLK-LD2450 24 GHz radar (up to 3 targets, shown on a radar plot) | photos, video, audio |
 | Something close | HC-SR04 ultrasonic | photos, video, audio |
 
-Everything is saved to the microSD card in `/sec/`:
+Everything is saved to the microSD card in `/sec/`, one folder per day (`/sec/2026_11_06/`):
 
-- `YYYYMMDD_HHMMSS_<source>-<name>_N.jpg`: photos
+- `YYYY_MM_DD_HHMMSS_Ddd__<source>-<name>_N.jpg`: photos, e.g. `2026_11_06_091801_Fri__motion-Biscuit-tin_1.jpg` (files from before 3.11 are named `YYYYMMDD_HHMMSS_...`)
 - `..._<source>-<name>.avi`: MJPEG video (plays in VLC / Windows Media Player)
 - `..._<source>-<name>.wav`: 16 kHz mono audio
 - `caselog.csv`: every event with time, source, pin and level, mic dB, motion %, radar targets and distance
@@ -94,6 +94,8 @@ For road trips and camping: battery power, no Wi-Fi, no phone signal.
 In the Meshtastic app on the radio: *Module config > Serial*: enabled, mode **TEXTMSG**, baud **38400**, and the RX/TX pins you wired. Every alert becomes a text on the primary channel, so any radio or phone on that channel gets it. If you use D6/D7 for the radio, turn the LD2450 radar off.
 
 **Two-way (commands from your phone):** wire the radio's TX pin to the ESP RX pin too (e.g. Heltec GPIO 48 → XIAO D5), switch on *Two-way: accept commands over LoRa* in The Pigeon Post. Then text just `status` (or arm, disarm, ring, quiet, snooze 30, photo, sleep, help) on the channel and the camera answers right away. The Command PIN is optional: if you set one, write it first (`1234 status`). The old `221B <PIN> status` form still works. Put both radios on a private channel with your own key.
+
+**Telegram commands:** switch on *Two-way: accept commands from your chat* in The Telegram Boy, then send your bot the same words (`status`, `/arm`, `snooze 30`, `photo`...). Only your own chat ID is obeyed; `photo` sends a picture back.
 
 **PIR:** output to D1 (the default tripwire 2 "PIR" and the default wake pin). Only D0-D5 can wake the chip.
 

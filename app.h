@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.10.2"
+#define FW_VERSION "3.11.0"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -89,6 +89,7 @@ struct Config {
   char tgChat[24] = "";
   bool tgPhoto = true;
   int  tgGapSec = 30;
+  bool tgCmdEn = false;
   // night watch (IR lamp + black-and-white picture)
   int  nightMode = 1;       // 0 off, 1 by light level, 2 by the clock, 3 always
   int  nightBelow = 35;     // light level (0-255) under which night begins
@@ -193,6 +194,8 @@ bool mountSD();
 File openSD(const String &path, const char *mode);
 bool timeValid();
 String stamp();
+String todayKey();  // "YYYYMMDD" or "" without a clock
+bool evidenceDay(const char *name, char *day, int *sec = nullptr, const char **tag = nullptr);
 String clockText();
 String safeTag(const String &s);
 void logEvent(const String &kind, const String &who, const String &detail);
@@ -226,6 +229,8 @@ void telegramStart();
 bool telegramReady();
 void telegramAlert(const String &text, bool withPhoto, bool force);
 String telegramFindChat();
+void telegramPhotoNow(const String &caption);
+bool remoteCommand(String text, const String &who, void (*out)(const String &));
 
 // ---------- presence.cpp ----------
 void presenceStart();
