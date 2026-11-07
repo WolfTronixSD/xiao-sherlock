@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.9.3 (2026-11-07)
+- Fix: the Armed switch in Settings kept showing what it was when the page opened. Arming with the header button and then pressing Seal and send would quietly disarm the house again. The switch now follows the button.
+
 ## 3.9.2 (2026-11-07): The Pocket Watch
 - The header carries a brass pocket watch with the board's time, the date, a remark for the hour, and the firmware version as a wax seal.
 - The arm button now says plainly 🔒 ARMED or 🔓 DISARMED, with "tap to disarm/arm" underneath. Disarming asks first.

@@ -308,6 +308,8 @@ async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=aw
  hdrInfo();$('irrCard').style.display=st.irrEn?'':'none';if(st.irrEn&&tab=='scene')irrPoll();
  $('homeChip').textContent=st.phoneHome==1?'\u{1F4F1} Holmes is home':st.phoneHome==0?'\u{1F4F1} Holmes is out':'';
  const seal=$('seal');seal.innerHTML=st.armed?'<b>\u{1F512} ARMED</b><small>The game is afoot! \u00b7 tap to disarm</small>':'<b>\u{1F513} DISARMED</b><small>Holmes is off duty \u00b7 tap to arm</small>';seal.title=st.armed?'Alarms are on. Tap to switch them off.':'Alarms are off. Tap to switch them on.';seal.classList.toggle('off',!st.armed);
+ // keep the Armed switch in Settings in step with the header button, or a later "Seal and send" would undo it
+ if(st.armed!==lastArmed){lastArmed=st.armed;const a=$('f_armed');if(a&&setLoaded){a.checked=!!st.armed;cfg.armed=!!st.armed;refreshOnOff()}}
  const pct=v=>Math.max(0,Math.min(100,(v+90)/90*100));
  $('micBar').style.width=pct(st.mic)+'%';if(thrDrag==null)$('micThr').style.left=pct(st.soundDb)+'%';$('micTxt').textContent=st.mic+' dB';
  $('recA').className='lamp'+(st.audioRec?' rec':'');$('recATxt').textContent=st.audioRec?'Watson is scribbling (recording audio)':"Watson's pencil is idle";
@@ -507,7 +509,7 @@ window.addEventListener('resize',()=>{if(tab=='files'){drawStats();drawTimeline(
 // ---------- settings (built from the schema) ----------
 let schema=[],pins=[];
 // Saving is only allowed once schema and config have both loaded, or empty fields could overwrite the real settings
-let setLoaded=false;
+let setLoaded=false;let lastArmed=null;
 async function loadSettings(){setLoaded=false;$('sealBtn').disabled=true;let s,c;
  for(let i=1;i<=4&&!c;i++){$('saveMsg').textContent=i>1?'Fetching the instructions again (try '+i+')...':'Fetching the instructions...';
   try{s=await (await api('/api/schema')).json();c=await (await api('/api/config')).json()}catch(e){c=null;await new Promise(r=>setTimeout(r,1000*i))}}
@@ -606,6 +608,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.9.3','2026-11-07','In step',["The Armed switch in Settings now follows the header button, so saving settings after arming no longer disarms the house"]],
  ['3.9.2','2026-11-07','The Pocket Watch',["The header carries a brass pocket watch with the board's time, the date, a remark for the hour, and the firmware version as a wax seal","The arm button now says plainly ARMED or DISARMED, with tap to disarm or arm underneath. Disarming asks first","The Night Watch on/off is now a row of buttons (Off, When dark, By the clock, Always on), and its ON badge follows it"]],
  ['3.9.1','2026-11-07','The Irregulars Lose Their Bluetooth',['Fix: switching the Irregulars on crashed the board (Bluetooth ran the chip out of memory). They now listen for phones on Wi-Fi only, and 30 KB of memory is back']],
  ['3.9','2026-11-07','The Baker Street Irregulars',['The Baker Street Irregulars: counts phones, watches and trackers nearby (Bluetooth LE and Wi-Fi probe requests) and raises the alarm when more than usual show up', 'The Irregulars card on The Scene with the nearby devices and a These are mine button']],
