@@ -240,6 +240,7 @@ void raiseEvent(Source src, const String &who, const String &detail) {
   if (a.video) what += "video ";
   if (a.audio) what += "audio ";
   if (a.notify && telegramReady()) what += "telegram ";
+  if (a.notify && cfg.meshEn) what += "lora ";
   if (a.siren) what += "alarm-bell ";
   logEvent(sourceName(src), who, detail + confirmedBy + " | " + sensorSnapshot() + (what.length() ? " | recording " + what : ""));
   mqttEvent(sourceName(src), who, detail);
