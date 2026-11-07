@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.10.2 (2026-11-07): The locker door
+- Fix: the Evidence Locker statistics (and the file list) walked thousands of SD files in one go inside the web task, starving core 0's idle task, so the task watchdog restarted the board in a loop. The walk now yields every 32 entries, and the statistics answer is cached for 60 s.
+
 ## 3.10.1 (2026-11-07): Watson keeps his notes
 - Fix: settings could silently fail to save (one ~3 KB NVS string needs a single page with room for all of it). After the next restart the board came back with older settings, for example the Pigeon Post off and disarmed. Settings are now an NVS blob, every save is checked, saves from different tasks no longer overlap, and a failed save shows a warning on The Scene and in the case log.
 - After a watchdog restart, the restart line names what each core was running, to find the task that hung.

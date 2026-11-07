@@ -152,20 +152,27 @@ static void handleCapture() {
 // opened (opening thousands of files one by one took minutes and froze the web page).
 // Covers the day folders (/sec/20261105/...) and older files directly in /sec.
 // fn(dayFolder or "", name, size) returns false to stop early.
+// Walks every file on the card. Thousands of files take seconds, so it pauses for a tick every 32 entries:
+// without that the web task hogs core 0, the idle task never runs and the task watchdog restarts the board.
 template <typename F> static void listSec(F fn) {
   static FF_DIR dir, sub;
   static FILINFO fi, sfi;
+  uint32_t seen = 0;
+  auto breathe = [&]() { if ((++seen & 31) == 0) vTaskDelay(1); };
   for (char drv = '0'; drv <= '1'; drv++) {
     char path[] = {drv, ':', '/', 's', 'e', 'c', 0};
     if (f_opendir(&dir, path) != FR_OK) continue;
     bool go = true;
     while (go && f_readdir(&dir, &fi) == FR_OK && fi.fname[0]) {
+      breathe();
       if (!(fi.fattrib & AM_DIR)) { go = fn("", fi.fname, (uint32_t)fi.fsize); continue; }
       char sp[48];
       snprintf(sp, sizeof(sp), "%s/%s", path, fi.fname);
       if (f_opendir(&sub, sp) != FR_OK) continue;
-      while (go && f_readdir(&sub, &sfi) == FR_OK && sfi.fname[0])
+      while (go && f_readdir(&sub, &sfi) == FR_OK && sfi.fname[0]) {
+        breathe();
         if (!(sfi.fattrib & AM_DIR)) go = fn(fi.fname, sfi.fname, (uint32_t)sfi.fsize);
+      }
       f_closedir(&sub);
     }
     f_closedir(&dir);
@@ -213,6 +220,10 @@ static void handleFiles() {
 struct DayStat { uint16_t jpg = 0, avi = 0, wav = 0, other = 0; uint64_t bytes = 0; uint16_t hours[24] = {}; std::map<String, uint16_t> src; };
 
 static void handleStats() {
+  // the answer is kept for a minute: the page asks again on every visit and the card walk is slow
+  static String cached;
+  static uint32_t cachedAt = 0;
+  if (cached.length() && millis() - cachedAt < 60000UL) { sendJson(cached); return; }
   std::map<String, DayStat> days;
   uint32_t total = 0;
   uint64_t bytes = 0;
@@ -254,6 +265,8 @@ static void handleStats() {
   }
   String s;
   serializeJson(doc, s);
+  cached = s;
+  cachedAt = millis();
   sendJson(s);
 }
 
