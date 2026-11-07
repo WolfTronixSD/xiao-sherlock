@@ -280,13 +280,17 @@ static void cameraTask(void *) {
     if (!fb) {
       if (++failures == 5) logEvent("error", "camera", "no picture from the camera");
       if (failures % 15 == 0) {  // still nothing: start the camera again (it can stay stuck after a soft restart)
+        static int restarts = 0;
         esp_camera_deinit();
         delay(300);
         bool ok = cameraInit();
-        logEvent(ok ? "camera" : "error", "camera", ok ? "camera restarted after no pictures" : "camera restart failed");
+        restarts = ok ? 0 : restarts + 1;
+        if (ok) logEvent("camera", "camera", "camera restarted after no pictures");
+        else if (restarts == 1 || restarts % 30 == 0)  // don't flood the case log while the camera is missing
+          logEvent("error", "camera", "camera restart failed (" + String(restarts) + "x) - is the camera board seated?");
         bgValid = false;
       }
-      delay(20);
+      delay(failures >= 15 ? 2000 : 20);  // a missing camera answers at once: retry slowly
       continue;
     }
     if (failures >= 5 || !frames) logEvent("camera", "camera", "pictures arriving, " + String(fb->width) + "x" + String(fb->height));
