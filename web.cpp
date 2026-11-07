@@ -421,6 +421,7 @@ void webStart() {
   });
   ROUTE("/api/irregulars", HTTP_GET, sendJson(irregularsJson()));
   ROUTE("/api/irrmine", HTTP_POST, {  // "these are mine": the devices around now become the normal count
+    irregularsMarkMine();
     cfg.irrBaseline = constrain(irregularsNow(), 0, 50);
     saveConfig();
     logEvent("irregulars", "web", "normal count set to " + String(cfg.irrBaseline) + " devices");

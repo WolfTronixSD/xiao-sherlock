@@ -23,6 +23,11 @@ h1{font-family:'IM Fell English SC',serif;font-weight:normal;margin:0;font-size:
 .fw{display:inline-block;background:radial-gradient(circle at 35% 30%,#b53a3a,#6d1414);color:#f6e7c8;font-family:'IM Fell English SC',serif;font-size:12px;border-radius:50%;width:46px;height:46px;line-height:46px;text-align:center;box-shadow:0 2px 4px #0005,inset 0 0 0 3px #8e2424;transform:rotate(-12deg);flex:none}
 .seal{margin-left:auto;border:0;cursor:pointer;border-radius:50px;padding:12px 20px;font-family:'IM Fell English SC',serif;font-size:17px;color:#fff;
  background:radial-gradient(circle at 35% 30%,#b23a3a,#6d1414);box-shadow:0 3px 6px rgba(0,0,0,.4),inset 0 -3px 6px rgba(0,0,0,.4)}
+.bars{display:inline-flex;gap:1px;align-items:flex-end;vertical-align:middle;margin-right:3px}.bars i{width:3px;background:#0002;border-radius:1px}.bars i.on{background:currentColor}
+tr.irr td{border-left:0}tr.irr .tag,.irrkey .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;color:#fff;font-style:normal}
+.irr.new .tag{background:#d9822b}.irr.near .tag{background:#9b2323}.irr.mine .tag{background:#3c6e3c}.irr.far .tag{background:#9a927e}
+tr.irr.new{background:#f6dcb0}tr.irr.near{color:#7b1e1e}tr.irr.mine{color:#2f5a2f}tr.irr.far{color:#9a927e}
+.irrkey{margin-top:4px;line-height:1.9}.irrkey .irr{margin-left:6px}
 .seal.off{background:radial-gradient(circle at 35% 30%,#8a8a7a,#4e4e44)}
 .seal{display:flex;flex-direction:column;align-items:center;line-height:1.15}.seal b{font-size:19px;letter-spacing:1px}.seal small{font-family:Georgia,serif;font-size:11px;opacity:.85;font-style:italic}
 nav{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0}
@@ -175,7 +180,8 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
     <div><b id="irrNow" style="font-size:22px">?</b> phones nearby <span class="small" id="irrBase"></span></div>
     <div class="small" id="irrTxt"></div>
     <table class="health" id="irrList" style="margin-top:6px"></table>
-    <div class="row"><button class="btn plain" onclick="irrMine()">These are mine</button><span class="small">sets the normal count to what is around now</span></div></div>
+    <div class="small irrkey"><span class="irr new"><span class="tag">NEW</span></span> just arrived, close <span class="irr near"><span class="tag">counts</span></span> close <span class="irr mine"><span class="tag">yours</span></span> marked as yours <span class="irr far"><span class="tag">far away</span></span> ignored</div>
+    <div class="row"><button class="btn plain" onclick="irrMine()">These are mine</button><span class="small">marks what is around now as yours (green) and sets the normal count. Phones change their address every few minutes, so a phone of yours can come back as new.</span></div></div>
    <div class="card"><h2>The Radar</h2><canvas id="radar" width="340" height="190"></canvas>
     <div class="small" id="radarTxt"></div>
     <div class="row" style="align-items:center;gap:8px;margin-top:6px"><label for="radarMm"><b>Trigger closer than</b></label>
@@ -351,7 +357,13 @@ async function irrPoll(){if(irrBusy||Date.now()-irrLast<2000)return;irrBusy=true
  try{const j=await (await api('/api/irregulars')).json();$('irrNow').textContent=j.now;
   $('irrBase').textContent=`(normal ${j.base}, alarm at ${j.base+j.extra}, counting stronger than ${j.rssi} dBm)`;
   $('irrTxt').textContent=(j.wifi?'Listening for phones on Wi-Fi':'Not listening: needs Wi-Fi or the hotspot on')+' \u00b7 free memory '+Math.round(j.heap/1024)+' KB';
-  $('irrList').innerHTML=j.list.map(d=>`<tr><td>${d.k}</td><td>#${esc(d.id)}</td><td>${d.r} dBm</td><td>${d.ago?d.ago+' s ago':'now'}</td><td class="small">${d.for>=60?Math.round(d.for/60)+' min':d.for+' s'} seen</td></tr>`).join('')||'<tr><td class="small">Nobody about. The street is empty.</td></tr>'}
+  const alarm=j.now>=j.base+j.extra;$('irrNow').style.color=alarm?'var(--red)':'';$('irrNow').title=alarm?'At or above the alarm level':'';
+  // colour per row: green = marked as yours, amber = close and new (first heard under a minute ago), red = close (counts), grey = far away (ignored)
+  const kind=d=>d.m?'mine':d.r<j.rssi?'far':d.new<60?'new':'near';
+  const LBL={mine:'yours',far:'far away',new:'NEW',near:'counts'};
+  const bars=r=>{const n=r>=-55?4:r>=-67?3:r>=-78?2:r>=-88?1:0;return '<span class="bars">'+[1,2,3,4].map(i=>`<i style="height:${i*3+2}px"${i<=n?' class="on"':''}></i>`).join('')+'</span>'};
+  const list=j.list.slice().sort((a,b)=>{const o={new:0,near:1,mine:2,far:3};return o[kind(a)]-o[kind(b)]||a.ago-b.ago});
+  $('irrList').innerHTML=list.map(d=>{const k=kind(d);return `<tr class="irr ${k}"><td><span class="tag">${LBL[k]}</span></td><td>#${esc(d.id)}</td><td>${bars(d.r)} ${d.r} dBm</td><td>${d.ago?d.ago+' s ago':'now'}</td><td class="small">${d.for>=60?Math.round(d.for/60)+' min':d.for+' s'} seen</td></tr>`}).join('')||'<tr><td class="small">Nobody about. The street is empty.</td></tr>'}
  catch(e){}irrBusy=false}
 async function irrMine(){try{const r=await (await api('/api/irrmine',{method:'POST'})).text();cfg.irrBaseline=+r;const f=$('f_irrBaseline');if(f)f.value=+r;toast('Normal count set to '+r+'.');irrLast=0;irrPoll()}catch(e){toast('Failed: '+e.message)}}
 let radarDrag=null;
@@ -608,6 +620,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.9.4','2026-11-07','Faces in the crowd',["The Irregulars colour each device: NEW (amber) for one that just arrived close by, red for close ones that count, green for ones you marked with These are mine, grey for far away. Signal bars, newest on top, and the count turns red at the alarm level"]],
  ['3.9.3','2026-11-07','In step',["The Armed switch in Settings now follows the header button, so saving settings after arming no longer disarms the house"]],
  ['3.9.2','2026-11-07','The Pocket Watch',["The header carries a brass pocket watch with the board's time, the date, a remark for the hour, and the firmware version as a wax seal","The arm button now says plainly ARMED or DISARMED, with tap to disarm or arm underneath. Disarming asks first","The Night Watch on/off is now a row of buttons (Off, When dark, By the clock, Always on), and its ON badge follows it"]],
  ['3.9.1','2026-11-07','The Irregulars Lose Their Bluetooth',['Fix: switching the Irregulars on crashed the board (Bluetooth ran the chip out of memory). They now listen for phones on Wi-Fi only, and 30 KB of memory is back']],
