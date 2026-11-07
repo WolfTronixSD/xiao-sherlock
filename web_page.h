@@ -24,6 +24,7 @@ h1{font-family:'IM Fell English SC',serif;font-weight:normal;margin:0;font-size:
 .seal{margin-left:auto;border:0;cursor:pointer;border-radius:50px;padding:12px 20px;font-family:'IM Fell English SC',serif;font-size:17px;color:#fff;
  background:radial-gradient(circle at 35% 30%,#b23a3a,#6d1414);box-shadow:0 3px 6px rgba(0,0,0,.4),inset 0 -3px 6px rgba(0,0,0,.4)}
 .seal.off{background:radial-gradient(circle at 35% 30%,#8a8a7a,#4e4e44)}
+.seal{display:flex;flex-direction:column;align-items:center;line-height:1.15}.seal b{font-size:19px;letter-spacing:1px}.seal small{font-family:Georgia,serif;font-size:11px;opacity:.85;font-style:italic}
 nav{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0}
 nav button{font-family:'IM Fell English SC',serif;font-size:16px;background:var(--paper2);border:1px solid var(--faded);border-bottom:0;
  border-radius:8px 8px 0 0;padding:7px 14px;cursor:pointer;color:var(--ink)}
@@ -306,7 +307,7 @@ function hdrInfo(){const m=/^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)/.exec(st.time||
 async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=await (await api('/api/status')).json()}catch(e){return}finally{stBusy=false}
  hdrInfo();$('irrCard').style.display=st.irrEn?'':'none';if(st.irrEn&&tab=='scene')irrPoll();
  $('homeChip').textContent=st.phoneHome==1?'\u{1F4F1} Holmes is home':st.phoneHome==0?'\u{1F4F1} Holmes is out':'';
- const seal=$('seal');seal.textContent=st.armed?'The game is afoot!':'Holmes is off duty';seal.classList.toggle('off',!st.armed);
+ const seal=$('seal');seal.innerHTML=st.armed?'<b>\u{1F512} ARMED</b><small>The game is afoot! \u00b7 tap to disarm</small>':'<b>\u{1F513} DISARMED</b><small>Holmes is off duty \u00b7 tap to arm</small>';seal.title=st.armed?'Alarms are on. Tap to switch them off.':'Alarms are off. Tap to switch them on.';seal.classList.toggle('off',!st.armed);
  const pct=v=>Math.max(0,Math.min(100,(v+90)/90*100));
  $('micBar').style.width=pct(st.mic)+'%';if(thrDrag==null)$('micThr').style.left=pct(st.soundDb)+'%';$('micTxt').textContent=st.mic+' dB';
  $('recA').className='lamp'+(st.audioRec?' rec':'');$('recATxt').textContent=st.audioRec?'Watson is scribbling (recording audio)':"Watson's pencil is idle";
@@ -412,7 +413,7 @@ function renderZones(){$('zones').innerHTML=zones.map((z,i)=>`<tr><td><input typ
 async function saveZones(){try{await api('/api/config',{method:'POST',body:JSON.stringify({zones})});toast('Places of interest noted.')}catch(e){toast('Failed: '+e.message)}}
 
 // ---------- arm / test ----------
-async function toggleArm(){const on=st.armed?0:1;await api('/api/arm?on='+on,{method:'POST'});toast(on?'The game is afoot!':'Holmes retires to his violin.');status()}
+async function toggleArm(){const on=st.armed?0:1;if(!on&&!confirm('Disarm? Alerts, recordings and the bell stop until you arm again.'))return;await api('/api/arm?on='+on,{method:'POST'});toast(on?'The game is afoot!':'Holmes retires to his violin.');status()}
 async function sleepNow(){if(!confirm('Holmes sleeps until the wake pin or the BOOT button. The page goes dark. Proceed?'))return;try{await api('/api/sleep',{method:'POST'});toast('Good night, Holmes.')}catch(e){toast(e.message)}}
 async function meshTest(){$('meshMsg').textContent='Releasing the pigeon...';try{$('meshMsg').textContent=await (await api('/api/mesh/test',{method:'POST'})).text()}catch(e){$('meshMsg').textContent=e.message}}
 // camp mode has no internet clock: the visiting phone sets it (the house ignores it when its own clock is right)
@@ -603,7 +604,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
- ['3.9.2','2026-11-07','The Pocket Watch',["The header carries a brass pocket watch with the board's time, the date, a remark for the hour, and the firmware version as a wax seal"]],
+ ['3.9.2','2026-11-07','The Pocket Watch',["The header carries a brass pocket watch with the board's time, the date, a remark for the hour, and the firmware version as a wax seal","The arm button now says plainly ARMED or DISARMED, with tap to disarm or arm underneath. Disarming asks first"]],
  ['3.9.1','2026-11-07','The Irregulars Lose Their Bluetooth',['Fix: switching the Irregulars on crashed the board (Bluetooth ran the chip out of memory). They now listen for phones on Wi-Fi only, and 30 KB of memory is back']],
  ['3.9','2026-11-07','The Baker Street Irregulars',['The Baker Street Irregulars: counts phones, watches and trackers nearby (Bluetooth LE and Wi-Fi probe requests) and raises the alarm when more than usual show up', 'The Irregulars card on The Scene with the nearby devices and a These are mine button']],
  ['3.8','2026-11-07','The Adventure of the Second Witness',['The Second Witness: optionally only alarm when two different sensors fire within a few seconds (fewer false alarms from animals and wind)', 'Tripwire 4 defaults to an RCWL-0516 microwave sensor (pull-down, goes HIGH)']],

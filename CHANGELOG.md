@@ -4,6 +4,7 @@ The same history is shown in the web GUI under **The Workshop**.
 
 ## 3.9.2 (2026-11-07): The Pocket Watch
 - The header carries a brass pocket watch with the board's time, the date, a remark for the hour, and the firmware version as a wax seal.
+- The arm button now says plainly 🔒 ARMED or 🔓 DISARMED, with "tap to disarm/arm" underneath. Disarming asks first.
 
 ## 3.9.1 (2026-11-07)
 - Fix: switching the Irregulars on crashed the board (the Bluetooth stack ran the chip out of internal memory). Bluetooth is gone; the Irregulars now listen to Wi-Fi probe requests only, and the ~30 KB of memory Bluetooth reserved is back.
