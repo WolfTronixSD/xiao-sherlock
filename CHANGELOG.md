@@ -2,6 +2,10 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.10 (2026-11-07): The pigeons fly both ways
+- Two-way Pigeon Post: with the radio's TX wired to the ESP RX pin, text `221B <PIN> <command>` on the Meshtastic channel. Commands: arm, disarm, status, ring [s], quiet, snooze [min], photo, sleep, help. Every command gets a short reply (replies skip the one-text-a-minute limit).
+- Off by default: switch on "Two-way: accept commands over LoRa" and set a Command PIN. Wrong PINs are logged; five in a row lock commands for 10 minutes. Use a private Meshtastic channel.
+
 ## 3.9.4 (2026-11-07): Faces in the crowd
 - The Irregulars list is colour coded: NEW (amber) = close and first heard under a minute ago, red = close (counts), green = marked as yours by "These are mine", grey = far away (ignored). Signal bars, new ones on top, and the count turns red at the alarm level.
 

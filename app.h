@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.9.4"
+#define FW_VERSION "3.10"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -126,6 +126,8 @@ struct Config {
   int  meshRx = -1;         // ESP RX <- radio TX (optional)
   int  meshBaud = 38400;
   int  meshGapSec = 60;
+  bool meshCmdEn = false;    // two-way: accept commands over LoRa ("221B <pin> <command>")
+  char meshPin[17] = "";    // PIN every command must carry
 };
 extern Config cfg;
 
@@ -249,6 +251,7 @@ const char *campWakeWhy();
 uint32_t campWakeCount();
 void meshBegin();
 bool meshSend(const String &text, bool force);
+void meshCmdStart();
 int  batteryMv();
 String battText();
 

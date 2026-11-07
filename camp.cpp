@@ -49,6 +49,107 @@ bool meshSend(const String &text, bool force) {
   return true;
 }
 
+// ---------- two-way: commands over LoRa ("221B <pin> <command>") ----------
+// In TEXTMSG mode the radio prints every channel message it receives as one line, usually "Name: text".
+static uint32_t snoozeUntil = 0;   // when "snooze N" re-arms by itself (0 = no snooze)
+static uint8_t badPins = 0;
+static uint32_t lockedUntil = 0, lastBadLog = 0;
+
+static const char *CMDS[] = {"arm", "disarm", "status", "ring", "quiet", "snooze", "photo", "sleep", "help"};
+
+static void reply(const String &t) { meshSend("221B: " + t, true); }  // replies skip the one-text-a-minute limit
+
+static void runCommand(const String &cmd, const String &arg, const String &who) {
+  String by = "LoRa" + (who.length() ? " (" + who + ")" : String(""));
+  logEvent("mesh", by, "command: " + cmd + (arg.length() ? " " + arg : ""));
+  if (cmd == "arm") { snoozeUntil = 0; setArmed(true, by, "command over LoRa"); reply("armed. The game is afoot."); }
+  else if (cmd == "disarm") { snoozeUntil = 0; setArmed(false, by, "command over LoRa"); reply("disarmed. Holmes is off duty."); }
+  else if (cmd == "snooze") {
+    int m = arg.toInt();
+    if (m < 1 || m > 720) m = 30;
+    setArmed(false, by, "snoozed over LoRa for " + String(m) + " min");
+    snoozeUntil = millis() + m * 60000UL;
+    if (!snoozeUntil) snoozeUntil = 1;
+    reply("disarmed for " + String(m) + " min, then armed again by itself.");
+  } else if (cmd == "status") {
+    int ph = irregularsNow();
+    String t = String(cfg.armed ? "armed" : "disarmed");
+    if (snoozeUntil) t += " (snoozed, " + String((int32_t)(snoozeUntil - millis()) / 60000 + 1) + " min left)";
+    t += ", " + clockText() + battText() + ", SD " + (live.sdOK ? String(live.freeMB) + " MB free" : String("missing"));
+    if (ph >= 0) t += ", phones near " + String(ph);
+    if (cfg.campEn) t += ", camp mode";
+    reply(t);
+  } else if (cmd == "ring") {
+    if (!cfg.sirenEn || cfg.sirenPin < 0) reply("the alarm bell is switched off or has no pin.");
+    else { int sec = arg.toInt(); if (sec < 1 || sec > 120) sec = cfg.sirenSec; sirenSound(sec, "rung over LoRa"); reply("ringing the bell for " + String(sec) + " s."); }
+  } else if (cmd == "quiet") { sirenStop("silenced over LoRa"); reply("bell silenced."); }
+  else if (cmd == "photo") { cameraRequestPhotos("lora"); reply("photos going to the SD card."); }
+  else if (cmd == "sleep") {
+    if (!cfg.campEn) reply("camp mode is off, so the house stays awake.");
+    else { reply("going to sleep."); delay(1500); campSleepNow(); }
+  } else reply("commands: arm, disarm, status, ring [s], quiet, snooze [min], photo, sleep");
+}
+
+static void handleLine(String line) {
+  line.trim();
+  if (!line.length()) return;
+  String low = line;
+  low.toLowerCase();
+  int at = low.indexOf("221b ");
+  if (at < 0) return;
+  String who = at >= 2 && line.substring(0, at).endsWith(": ") ? line.substring(0, at - 2) : String("");
+  who.trim();
+  if (who.length() > 20) who = who.substring(0, 20);
+  // tokens after "221B": pin, command, argument
+  String rest = line.substring(at + 5);
+  rest.trim();
+  int sp1 = rest.indexOf(' ');
+  if (sp1 < 0) return;
+  String pin = rest.substring(0, sp1), tail = rest.substring(sp1 + 1);
+  tail.trim();
+  int sp2 = tail.indexOf(' ');
+  String cmd = sp2 < 0 ? tail : tail.substring(0, sp2), arg = sp2 < 0 ? String("") : tail.substring(sp2 + 1);
+  cmd.toLowerCase();
+  arg.trim();
+  bool known = false;
+  for (auto c : CMDS) if (cmd == c) known = true;
+  if (!known) return;  // not a command (our own alerts start with "221B:" too)
+  uint32_t now = millis();
+  if (!cfg.meshCmdEn) { if (now - lastBadLog > 30000UL) { lastBadLog = now; logEvent("mesh", "LoRa", "ignored a command: two-way is switched off"); } return; }
+  if (!cfg.meshPin[0]) { if (now - lastBadLog > 30000UL) { lastBadLog = now; logEvent("mesh", "LoRa", "ignored a command: no command PIN is set"); } return; }
+  if (lockedUntil && (int32_t)(lockedUntil - now) > 0) return;
+  if (pin != cfg.meshPin) {
+    if (++badPins >= 5) { badPins = 0; lockedUntil = now + 600000UL; logEvent("mesh", "LoRa", "5 wrong PINs: commands locked for 10 minutes"); }
+    else if (now - lastBadLog > 30000UL) { lastBadLog = now; logEvent("mesh", "LoRa", "wrong PIN on a command" + (who.length() ? " from " + who : String(""))); }
+    return;
+  }
+  badPins = 0;
+  runCommand(cmd, arg, who);
+}
+
+static void meshCmdTask(void *) {
+  String buf;
+  for (;;) {
+    delay(100);
+    if (snoozeUntil && (int32_t)(millis() - snoozeUntil) >= 0) {
+      snoozeUntil = 0;
+      if (!cfg.armed) { setArmed(true, "LoRa", "the snooze is over"); reply("snooze over, armed again."); }
+    }
+    if (!meshActive || cfg.meshRx < 0) { buf = ""; continue; }
+    String got;
+    xSemaphoreTake(meshLock, portMAX_DELAY);
+    while (meshActive && meshSerial.available()) {
+      char c = meshSerial.read();
+      if (c == '\n' || c == '\r') { if (buf.length()) { got = buf; buf = ""; break; } }
+      else if (buf.length() < 240) buf += c;
+    }
+    xSemaphoreGive(meshLock);
+    if (got.length()) handleLine(got);
+  }
+}
+
+void meshCmdStart() { xTaskCreatePinnedToCore(meshCmdTask, "pigeon", 4096, nullptr, 1, nullptr, 1); }
+
 // ---------- battery ----------
 int batteryMv() {
   if (cfg.battPin < 0) return -1;
