@@ -619,6 +619,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.10.1','2026-11-07','Watson keeps his notes',["Fix: settings could silently fail to save, so after a restart the house came back with older settings (Pigeon Post off, disarmed). They are now stored in pieces, every save is checked, and a failed save shows a warning","After a watchdog restart the case log names the task that hung","Bigger version seal, the bell HIGH/LOW buttons only in Settings, and alarm log lines mention LoRa"]],
  ['3.10','2026-11-07','The pigeons fly both ways',["Two-way Pigeon Post: text 221B PIN arm, disarm, status, ring, quiet, snooze 30, photo, sleep or help from the Meshtastic app and the house answers over LoRa","Switched off until you turn on Two-way and set a PIN. Wrong PINs are logged, and five in a row lock commands out for 10 minutes"]],
  ['3.9.4','2026-11-07','Faces in the crowd',["The Irregulars colour each device: NEW (amber) for one that just arrived close by, red for close ones that count, green for ones you marked with These are mine, grey for far away. Signal bars, newest on top, and the count turns red at the alarm level"]],
  ['3.9.3','2026-11-07','In step',["The Armed switch in Settings now follows the header button, so saving settings after arming no longer disarms the house"]],

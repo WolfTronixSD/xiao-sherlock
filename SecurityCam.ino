@@ -11,6 +11,23 @@
 #include <time.h>
 #include <Preferences.h>
 #include "esp_system.h"
+#include "esp_attr.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+// When the task watchdog bites, note what each core was running; it survives the restart in RTC memory
+RTC_NOINIT_ATTR static char wdtTask[2][16];
+RTC_NOINIT_ATTR static uint32_t wdtMagic;
+extern "C" void esp_task_wdt_isr_user_handler(void) {
+  for (int c = 0; c < 2; c++) {
+    TaskHandle_t h = xTaskGetCurrentTaskHandleForCore(c);
+    const char *n = h ? pcTaskGetName(h) : "?";
+    int i = 0;
+    for (; i < 15 && n[i]; i++) wdtTask[c][i] = n[i];
+    wdtTask[c][i] = 0;
+  }
+  wdtMagic = 0xC0FFEE21;
+}
 #include "app.h"
 
 // Optional first-boot Wi-Fi: copy secrets.example.h to secrets.h (not committed to git).
@@ -31,7 +48,14 @@ static void countBoot() {
     case ESP_RST_SW:       live.resetWhy = "software restart (web page, update or stuck-page guard)"; break;
     case ESP_RST_PANIC:    live.resetWhy = "crash"; break;
     case ESP_RST_INT_WDT:  live.resetWhy = "watchdog (interrupts blocked)"; break;
-    case ESP_RST_TASK_WDT: live.resetWhy = "watchdog (a task hung)"; break;
+    case ESP_RST_TASK_WDT:
+      live.resetWhy = "watchdog (a task hung)";
+      if (wdtMagic == 0xC0FFEE21) {
+        wdtTask[0][15] = wdtTask[1][15] = 0;
+        live.wdtWho = String("core 0 busy with \"") + wdtTask[0] + "\", core 1 with \"" + wdtTask[1] + "\"";
+        live.resetWhy += ": " + live.wdtWho;
+      }
+      break;
     case ESP_RST_WDT:      live.resetWhy = "watchdog (chip hung, often a power dip)"; break;
     case ESP_RST_BROWNOUT: live.resetWhy = "power dip (brownout)"; break;
     case ESP_RST_DEEPSLEEP:live.resetWhy = "woke from sleep"; break;
@@ -39,6 +63,7 @@ static void countBoot() {
     case ESP_RST_USB:      live.resetWhy = "USB (upload)"; break;
     default:               live.resetWhy = "other"; break;
   }
+  wdtMagic = 0;
 }
 
 static void wifiReady() {

@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.10"
+#define FW_VERSION "3.10.1"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -154,6 +154,9 @@ struct LiveState {
   volatile bool siren = false;       // alarm bell sounding
   volatile int  mqtt = -1;           // -1 off, 0 not connected, 1 connected
   String pinWarning;
+  volatile bool saveFailed = false;  // the last settings save did not reach flash
+  volatile int nvsFree = -1;         // free NVS entries (32 bytes each)
+  String wdtWho;                     // what each core was running when the watchdog bit last time
 };
 extern LiveState live;
 

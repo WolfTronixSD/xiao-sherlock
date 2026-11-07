@@ -2,6 +2,11 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.10.1 (2026-11-07): Watson keeps his notes
+- Fix: settings could silently fail to save (one ~3 KB NVS string needs a single page with room for all of it). After the next restart the board came back with older settings, for example the Pigeon Post off and disarmed. Settings are now an NVS blob, every save is checked, saves from different tasks no longer overlap, and a failed save shows a warning on The Scene and in the case log.
+- After a watchdog restart, the restart line names what each core was running, to find the task that hung.
+- Bigger version seal; the bell's Active HIGH/LOW buttons are only in Settings now; alarm log lines list "lora" when a LoRa text goes out.
+
 ## 3.10 (2026-11-07): The pigeons fly both ways
 - Two-way Pigeon Post: with the radio's TX wired to the ESP RX pin, text `221B <PIN> <command>` on the Meshtastic channel. Commands: arm, disarm, status, ring [s], quiet, snooze [min], photo, sleep, help. Every command gets a short reply (replies skip the one-text-a-minute limit).
 - Off by default: switch on "Two-way: accept commands over LoRa" and set a Command PIN. Wrong PINs are logged; five in a row lock commands for 10 minutes. Use a private Meshtastic channel.
