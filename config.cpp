@@ -21,7 +21,7 @@ String pinName(int pin) {
 }
 
 const char *sourceName(Source s) {
-  static const char *n[] = {"sound", "motion", "input1", "input2", "input3", "input4", "radar", "sonar", "irregulars", "test"};
+  static const char *n[] = {"sound", "motion", "input1", "input2", "input3", "input4", "radar", "sonar", "seismograph", "irregulars", "test"};
   return s < SRC_COUNT ? n[s] : "?";
 }
 
@@ -31,6 +31,7 @@ Actions actionsFor(Source s) {
     case SRC_MOTION: return cfg.motionAct;
     case SRC_RADAR:  return cfg.radarAct;
     case SRC_SONAR:  return cfg.sonarAct;
+    case SRC_SHAKE:  return cfg.shakeAct;
     case SRC_IRREG:  return cfg.irrAct;
     case SRC_TEST:   return {true, true, true, true};
     default:         return cfg.in[s - SRC_INPUT1].act;
@@ -164,6 +165,20 @@ void buildFields() {
   add(g, "sonarEcho", "ECHO pin (via 5V->3.3V divider!)", 'p', &cfg.sonarEcho);
   add(g, "sonarCm", "Trigger when something is closer than (cm)", 'i', &cfg.sonarCm, 5, 400);
   addActions(g, "sonar", cfg.sonarAct);
+
+  g = "The Seismograph (MPU6050 tilt and shock)";
+  add(g, "shakeEn", "Seismograph enabled", 'b', &cfg.shakeEn, 0, 0, nullptr,
+      "A GY-521 / MPU6050 board: VCC to 3V3, GND, SDA and SCL to the pins below. Screw or glue it firmly to the car body, tent pole or box: "
+      "a loose board rattles. Tilt catches a car being jacked up (wheel or catalytic converter theft) or towed; shock catches a smashed window, a forced door or a kick. "
+      "The resting angle is taken when you arm (and with Level now on The Scene); very slow changes (heat, tyres cooling) are followed by themselves.");
+  add(g, "shakeSda", "SDA pin", 'p', &cfg.shakeSda);
+  add(g, "shakeScl", "SCL pin", 'p', &cfg.shakeScl);
+  add(g, "shakeTiltDeg", "Alarm when tilted more than (degrees, 0 = off)", 'i', &cfg.shakeTiltDeg, 0, 45, nullptr,
+      "Car: 2. A jack lifting one wheel tilts a car about 3 to 5 degrees.");
+  add(g, "shakeShockMg", "Alarm on a jolt stronger than (milli-g, 0 = off)", 'i', &cfg.shakeShockMg, 0, 4000, nullptr,
+      "Car: 80 to 150 (lower = more sensitive). A slammed door nearby or a passing truck can reach 50. Watch the live value on The Scene while you knock. "
+      "With Two witnesses on, a jolt plus a loud sound within the witness time is a strong break-in sign.");
+  addActions(g, "shake", cfg.shakeAct);
 
   g = "The Baker Street Irregulars (phones and watches nearby)";
   add(g, "irrEn", "Listen for phones nearby (Wi-Fi)", 'b', &cfg.irrEn, 0, 0, nullptr,

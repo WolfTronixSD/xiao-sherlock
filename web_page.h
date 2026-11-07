@@ -62,7 +62,7 @@ th{text-align:left;font-family:'IM Fell English SC',serif;font-weight:normal;fon
 td{border-bottom:1px dotted #b9a171;padding:5px 4px;vertical-align:top}
 .log td{font-family:'Special Elite',monospace}
 .kind{display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;color:#fff;background:var(--faded)}
-.k-sound{background:#5c3b7a}.k-motion{background:#8a5a14}.k-radar{background:#1d5c63}.k-sonar{background:#3b4f8a}.k-irregulars{background:#6b4f2e}.k-test{background:#555}
+.k-sound{background:#5c3b7a}.k-motion{background:#8a5a14}.k-radar{background:#1d5c63}.k-sonar{background:#3b4f8a}.k-irregulars{background:#6b4f2e}.k-seismograph{background:#7a2e2e}.k-test{background:#555}
 .k-saved{background:var(--green)}.k-error,.k-warning{background:var(--red)}.k-input1,.k-input2,.k-input3,.k-input4{background:#7b1e1e}
 .quote{font-style:italic;color:var(--faded);font-size:12px}
 fieldset{border:1px solid #cdb98c;border-left:10px solid var(--sc,#6b5536);border-radius:8px;margin:0 0 14px;padding:0;background:var(--card);scroll-margin-top:90px}
@@ -166,6 +166,7 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
      <div id="sensChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div></div>
     <div style="margin-top:8px"><b>Tripwires</b><div id="inputs"></div></div>
     <div id="sonarBox"></div>
+    <div id="shakeBox"></div>
     <div style="margin-top:8px"><span class="lamp" id="nightL"></span><b>The Night Watch</b> <span id="nightTxt"></span></div>
     <div><span class="lamp" id="bellL"></span><b>The Alarm Bell</b> <span id="bellTxt"></span>
      <button class="btn plain" id="bellBtn" onclick="bell()">Ring it</button>
@@ -274,7 +275,7 @@ const QUIPS=["When you have eliminated the impossible, whatever remains is proba
 const REMARKS={sound:["A noise! Possibly Moriarty, possibly the kettle.","Someone sneezed in the drawing room.","The walls have ears. Ours, specifically."],
 motion:["Something moved. The plot thickens.","A shadow at the window!","Movement, Watson! Fetch my revolver. Or a biscuit."],
 input1:["The tripwire has spoken.","A door opens; a mystery begins."],input2:["The tripwire has spoken."],input3:["The tripwire has spoken."],input4:["The tripwire has spoken."],
-radar:["A figure approaches through the fog.","The radar sees what the eye cannot."],sonar:["The bat ears detect a visitor."],irregulars:["The street urchins report a stranger.","Wiggins says someone is coming up the road."],
+radar:["A figure approaches through the fog.","The radar sees what the eye cannot."],sonar:["The bat ears detect a visitor."],seismograph:["The floor itself bears witness.","Someone is rocking the boat, Watson."],irregulars:["The street urchins report a stranger.","Wiggins says someone is coming up the road."],
 test:["Inspector Lestrade blunders in, as expected."],saved:["Evidence secured."],start:["221B opens its doors."],config:["Watson takes notes."],
 error:["Confound it!"],warning:["Hmm. Most irregular."],deleted:["Evidence destroyed. Very suspicious."]};
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -320,6 +321,7 @@ async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=aw
  $('recA').className='lamp'+(st.audioRec?' rec':'');$('recATxt').textContent=st.audioRec?'Watson is scribbling (recording audio)':"Watson's pencil is idle";
  $('recV').className='lamp'+(st.videoRec?' rec':'');$('recVTxt').textContent=st.videoRec?'The camera obscura whirrs (recording video)':'The camera obscura rests';
  $('inputs').innerHTML=st.inputs.filter(i=>i.en).map(i=>`<div><span class="lamp ${i.level==1?'hi':i.level==0?'lo':''}"></span>${esc(i.name)} <span class="small">${esc(i.pin)}: ${i.level==1?'HIGH':i.level==0?'LOW':'?'}</span></div>`).join('')||'<div class="small">None strung. See Instructions to Watson.</div>';
+ $('shakeBox').innerHTML=st.shakeEn?`<div style="margin-top:8px"><b>The Seismograph</b> ${st.shakeOK==1?`tilt ${st.tilt.toFixed(1)}&deg; <span class="small">(alarm over ${st.tiltLim||'-'}&deg;)</span>, jolt ${st.shock.toFixed(2)} g <span class="small">(alarm over ${st.shockLim?(st.shockLim/1000).toFixed(2):'-'} g)</span> <button class="btn plain" onclick="levelNow()">Level now</button>`:'<span class="small">no MPU6050 found - check the wiring</span>'}</div>`:'';
  $('sonarBox').innerHTML=st.sonarEn?`<div style="margin-top:8px"><b>The Bat Ears</b> ${st.sonarCm<0?'nothing in range':st.sonarCm+' cm'} <span class="small">(trigger under ${st.sonarLimit} cm)</span></div>`:'';
  $('warn').textContent=st.warn||'';
  const NM=['off','when dark','by the clock','always'];
@@ -339,7 +341,7 @@ async function bellCfg(k,v){bellBusy=true;try{await api('/api/sirencfg?'+k+'='+(
  toast(k=='en'?(v?'Alarm bell on.':'Alarm bell off.'):(v?'Bell rings when the pin goes LOW.':'Bell rings when the pin goes HIGH.'))}catch(e){toast('Failed: '+e.message)}
  bellBusy=false;$('bellEn').checked=!!st.sirenEn;$('bellBtn').disabled=!st.sirenEn}
 // ---------- quick sensor switches (saved at once) ----------
-const SENS=[['soundEn','&#128066; Sound'],['motionEn','&#128065;&#65039; Motion'],['in1_en',1],['in2_en',2],['in3_en',3],['in4_en',4],['radarEn','&#128225; Radar'],['sonarEn','&#129415; Sonar'],['irrEn','&#129490; Irregulars']];
+const SENS=[['soundEn','&#128066; Sound'],['motionEn','&#128065;&#65039; Motion'],['in1_en',1],['in2_en',2],['in3_en',3],['in4_en',4],['radarEn','&#128225; Radar'],['sonarEn','&#129415; Sonar'],['shakeEn','&#128200; Seismograph'],['irrEn','&#129490; Irregulars']];
 function sensLabel(s){return typeof s[1]=='number'?'&#129700; '+esc(cfg['in'+s[1]+'_name']||('Input '+s[1])):s[1]}
 function drawSens(){if(!cfg||cfg.soundEn===undefined)return;const any=SENS.some(s=>cfg[s[0]]);
  $('sensChips').innerHTML=SENS.map(s=>`<span class="chip ${cfg[s[0]]?'on':''}" onclick="sensSet({${s[0]}:${!cfg[s[0]]}})">${sensLabel(s)}</span>`).join('');
@@ -439,6 +441,7 @@ async function loadLog(){let ev=[];try{ev=await (await api('/api/events')).json(
  $('log').innerHTML=ev.map(e=>`<tr><td>${esc(e.t)}</td><td><span class="kind k-${esc(e.k)}">${esc(e.k)}</span></td><td>${esc(e.w)}</td>
  <td>${esc(e.d)}<div class="quote">${REMARKS[e.k]?esc(pick(REMARKS[e.k])):''}</div></td></tr>`).join('')||'<tr><td colspan="4">Nothing yet. A quiet day at Baker Street.</td></tr>'}
 
+async function levelNow(){try{await api('/api/level',{method:'POST'});toast('Resting angle taken. Holmes notes the level of the floor.')}catch(e){toast(e.message)}}
 // ---------- evidence locker ----------
 // 2026_11_06_091801_Fri__tag... (new) or 20261106_091801_tag... (old) -> '20261106'
 const dayKey=n=>{let m=n.match(/^(\d{4})_(\d{2})_(\d{2})_\d{6}_/);if(m)return m[1]+m[2]+m[3];m=n.match(/^(\d{8})_\d{6}_/);return m?m[1]:''};
@@ -625,7 +628,8 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
- ['3.12.2','2026-11-07','A false alarm in the log',["The Telegram photo no longer reports 'could not save' when it did save"]],
+ ['3.13.0','2026-11-07','The seismograph',["New sensor: MPU6050 tilt and shock, for the camp and against car break-ins (jacked up, towed, window smashed)","Live tilt and jolt on The Scene, with a Level now button"]],
+['3.12.2','2026-11-07','A false alarm in the log',["The Telegram photo no longer reports 'could not save' when it did save"]],
 ['3.12.1','2026-11-07','Room to breathe',["Telegram's encryption now uses the big PSRAM, so the internal memory stops running out"]],
 ['3.12.0','2026-11-07','Pictures by telegraph',["Telegram photo is saved to the card too","New commands: audio 10 and video 10 record a clip and send it to Telegram","Also last, log, mute 1h, arm 2h, and tap buttons in Telegram","Memory: big buffers moved to the PSRAM, so the internal memory no longer runs out"]],
 ['3.11.0','2026-11-07','The librarian and the telegraph',["The Evidence Locker opens at once, even with thousands of files: a librarian counts them in the background","Telegram commands: text your bot status, arm, disarm, snooze 30, photo... and it answers (only your own chat)","New file names with the weekday: 2026_11_06_091801_Fri__motion-Biscuit-tin.avi"]],

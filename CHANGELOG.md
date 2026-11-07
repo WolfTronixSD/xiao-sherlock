@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.13.0 (2026-11-07): The seismograph
+- New sensor, the Seismograph: an MPU6050 (GY-521) on I2C, SDA D2 and SCL D3 by default. **Tilt** alarms when the resting angle changes by more than N degrees for over a second (a car jacked up for its wheels or catalytic converter, or towed). **Shock** alarms on a jolt above a limit in milli-g (smashed window, forced door, kick). The resting angle is taken when arming and with *Level now* on The Scene; very slow drift (heat, tyres cooling) is followed by itself. Live tilt and jolt on The Scene; its own actions like every sensor, and it counts as a witness for the Two witnesses rule (jolt + loud sound = strong break-in sign).
+
 ## 3.12.2 (2026-11-07): A false alarm in the log
 - The Telegram photo was saved to the card, but the case log said "could not save" (the check ran after the file was closed).
 
