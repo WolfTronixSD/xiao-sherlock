@@ -169,8 +169,7 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
     <div style="margin-top:8px"><span class="lamp" id="nightL"></span><b>The Night Watch</b> <span id="nightTxt"></span></div>
     <div><span class="lamp" id="bellL"></span><b>The Alarm Bell</b> <span id="bellTxt"></span>
      <button class="btn plain" id="bellBtn" onclick="bell()">Ring it</button>
-     <div class="row" style="align-items:center;gap:8px;margin-top:4px"><label class="sw" title="Alarm bell on or off"><input type="checkbox" id="bellEn" onchange="bellCfg('en',this.checked)"><span></span></label>
-      <span class="seg"><button type="button" id="bellHi" onclick="bellCfg('low',false)">Active HIGH</button><button type="button" id="bellLo" onclick="bellCfg('low',true)">Active LOW</button></span></div></div>
+     <div class="row" style="align-items:center;gap:8px;margin-top:4px"><label class="sw" title="Alarm bell on or off"><input type="checkbox" id="bellEn" onchange="bellCfg('en',this.checked)"><span></span></label><span class="small">Active HIGH / LOW is in Instructions to Watson, The Alarm Bell</span></div></div>
     <div id="warn" style="color:var(--red)"></div>
    </div>
    <div class="card"><h2>&#129658; The Doctor's Report</h2><table class="health" id="health"></table>
@@ -327,7 +326,7 @@ async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=aw
  $('nightL').className='lamp'+(st.night?' hi':'');$('nightTxt').innerHTML=(st.night?'on duty':'resting')+` <span class="small">(${NM[st.nightMode]||'?'}, light level ${st.light<0?'?':st.light}${st.irPin?', IR lamp on '+esc(st.irPin):''})</span>`;
  $('bellL').className='lamp'+(st.siren?' rec':'');$('bellTxt').innerHTML=(st.siren?'RINGING':'silent')+` <span class="small">${st.sirenPin?esc(st.sirenPin):'(no pin set)'}</span>`;
  $('bellBtn').textContent=st.siren?'Silence it':'Ring it';
- if(!bellBusy){$('bellEn').checked=!!st.sirenEn;$('bellHi').classList.toggle('on',!st.sirenLow);$('bellLo').classList.toggle('on',!!st.sirenLow);$('bellBtn').disabled=!st.sirenEn}
+ if(!bellBusy){$('bellEn').checked=!!st.sirenEn;$('bellBtn').disabled=!st.sirenEn}
  drawRadar();health();syncTime();
  if(st.motionEn===false)$('motionNote').textContent='Motion detection is off - switch it on under Instructions to Watson.';else $('motionNote').textContent='Whole picture changed: '+st.motionGlobal+'%';
  zones.forEach((z,i)=>{const c=$('zp'+i),m=$('zm'+i),v=st.motion[i]||0;if(c)c.textContent=v+'%';
@@ -338,7 +337,7 @@ let bellBusy=false;
 async function bellCfg(k,v){bellBusy=true;try{await api('/api/sirencfg?'+k+'='+(v?1:0),{method:'POST'});
  if(k=='en'){st.sirenEn=cfg.sirenEn=v;const e=$('f_sirenEn');if(e)e.checked=v}else{st.sirenLow=cfg.sirenActiveLow=v;const e=$('f_sirenActiveLow');if(e){e.checked=v;e.parentNode.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',(i==1)==v))}}
  toast(k=='en'?(v?'Alarm bell on.':'Alarm bell off.'):(v?'Bell rings when the pin goes LOW.':'Bell rings when the pin goes HIGH.'))}catch(e){toast('Failed: '+e.message)}
- bellBusy=false;$('bellEn').checked=!!st.sirenEn;$('bellHi').classList.toggle('on',!st.sirenLow);$('bellLo').classList.toggle('on',!!st.sirenLow);$('bellBtn').disabled=!st.sirenEn}
+ bellBusy=false;$('bellEn').checked=!!st.sirenEn;$('bellBtn').disabled=!st.sirenEn}
 // ---------- quick sensor switches (saved at once) ----------
 const SENS=[['soundEn','&#128066; Sound'],['motionEn','&#128065;&#65039; Motion'],['in1_en',1],['in2_en',2],['in3_en',3],['in4_en',4],['radarEn','&#128225; Radar'],['sonarEn','&#129415; Sonar'],['irrEn','&#129490; Irregulars']];
 function sensLabel(s){return typeof s[1]=='number'?'&#129700; '+esc(cfg['in'+s[1]+'_name']||('Input '+s[1])):s[1]}
