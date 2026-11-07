@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.6.1"
+#define FW_VERSION "3.7"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -91,6 +91,7 @@ struct Config {
   // the alarm bell (siren, buzzer or LED via a transistor/relay)
   int  sirenPin = -1;
   bool sirenActiveLow = false;
+  bool sirenEn = true;      // off: the bell never rings (the pin stays idle)
   int  sirenSec = 10;
   int  sirenStyle = 1;      // 0 steady, 1 slow beep, 2 fast blink, 3 piezo wail, 4 piezo beeps
   // MQTT / Home Assistant

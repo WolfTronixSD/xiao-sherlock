@@ -76,6 +76,17 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
 .f label{flex:1}.f input[type=text],.f input[type=password],.f input[type=number],.f select{width:220px;max-width:55vw;font-family:inherit;font-size:13px;
  background:#fffaf0;border:1px solid #b9a171;border-radius:3px;padding:4px}
 .f input[type=checkbox]{width:20px;height:20px;accent-color:var(--red)}
+.sw,.f label.sw{position:relative;display:inline-block;width:46px;height:24px;flex:none}.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw span{position:absolute;inset:0;background:#c9b48a;border-radius:24px;cursor:pointer;transition:.15s}
+.sw span:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 2px #0004}
+.sw input:checked+span{background:var(--green)}.sw input:checked+span:before{transform:translateX(22px)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid #b9a171;border-radius:6px;overflow:hidden;max-width:60vw}
+.seg button{font-family:inherit;font-size:12px;border:0;border-left:1px solid #b9a171;background:var(--paper2);color:var(--ink);padding:6px 10px;cursor:pointer}
+.seg button:first-of-type{border-left:0}.seg button.on{background:var(--red);color:#fff}
+.acts{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0;border-bottom:1px dotted #d6c49a;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid #b9a171;border-radius:16px;padding:4px 10px;font-size:12px;cursor:pointer;background:var(--paper2);user-select:none}
+.chip input{display:none}.chip:has(input:checked){background:var(--green);color:#f1e6cc;border-color:var(--green)}
+.chip.on{background:var(--green);color:#f1e6cc;border-color:var(--green)}
 .help{font-size:11px;color:var(--faded);font-style:italic;padding:2px 0 6px}
 .files{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
 .clue{background:#fffaf0;border:1px solid #cdb98c;padding:6px;font-size:11px;word-break:break-all;box-shadow:1px 2px 0 rgba(0,0,0,.08);transform:rotate(-.4deg)}
@@ -135,11 +146,15 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
     <div class="small">Red line = threshold: drag it to change it (saved at once). Clap, cough, or accuse someone loudly to test.</div>
     <div style="margin-top:8px"><span class="lamp" id="recA"></span><span id="recATxt">Watson's pencil is idle</span></div>
     <div><span class="lamp" id="recV"></span><span id="recVTxt">The camera obscura rests</span></div>
+    <div style="margin-top:8px"><b>Sensors</b> <button class="btn plain" id="allSens" onclick="allSensors()">All off</button>
+     <div id="sensChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div></div>
     <div style="margin-top:8px"><b>Tripwires</b><div id="inputs"></div></div>
     <div id="sonarBox"></div>
     <div style="margin-top:8px"><span class="lamp" id="nightL"></span><b>The Night Watch</b> <span id="nightTxt"></span></div>
     <div><span class="lamp" id="bellL"></span><b>The Alarm Bell</b> <span id="bellTxt"></span>
-     <button class="btn plain" id="bellBtn" onclick="bell()">Ring it</button></div>
+     <button class="btn plain" id="bellBtn" onclick="bell()">Ring it</button>
+     <div class="row" style="align-items:center;gap:8px;margin-top:4px"><label class="sw" title="Alarm bell on or off"><input type="checkbox" id="bellEn" onchange="bellCfg('en',this.checked)"><span></span></label>
+      <span class="seg"><button type="button" id="bellHi" onclick="bellCfg('low',false)">Active HIGH</button><button type="button" id="bellLo" onclick="bellCfg('low',true)">Active LOW</button></span></div></div>
     <div id="warn" style="color:var(--red)"></div>
    </div>
    <div class="card"><h2>&#129658; The Doctor's Report</h2><table class="health" id="health"></table>
@@ -273,12 +288,30 @@ async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=aw
  $('nightL').className='lamp'+(st.night?' hi':'');$('nightTxt').innerHTML=(st.night?'on duty':'resting')+` <span class="small">(${NM[st.nightMode]||'?'}, light level ${st.light<0?'?':st.light}${st.irPin?', IR lamp on '+esc(st.irPin):''})</span>`;
  $('bellL').className='lamp'+(st.siren?' rec':'');$('bellTxt').innerHTML=(st.siren?'RINGING':'silent')+` <span class="small">${st.sirenPin?esc(st.sirenPin):'(no pin set)'}</span>`;
  $('bellBtn').textContent=st.siren?'Silence it':'Ring it';
+ if(!bellBusy){$('bellEn').checked=!!st.sirenEn;$('bellHi').classList.toggle('on',!st.sirenLow);$('bellLo').classList.toggle('on',!!st.sirenLow);$('bellBtn').disabled=!st.sirenEn}
  drawRadar();health();syncTime();
  if(st.motionEn===false)$('motionNote').textContent='Motion detection is off - switch it on under Instructions to Watson.';else $('motionNote').textContent='Whole picture changed: '+st.motionGlobal+'%';
  zones.forEach((z,i)=>{const c=$('zp'+i),m=$('zm'+i),v=st.motion[i]||0;if(c)c.textContent=v+'%';
   if(m){m.style.width=Math.min(100,v)+'%';m.nextElementSibling.style.left=z.minPct+'%'}});
  if(tab=='shop')sys();
 }
+let bellBusy=false;
+async function bellCfg(k,v){bellBusy=true;try{await api('/api/sirencfg?'+k+'='+(v?1:0),{method:'POST'});
+ if(k=='en'){st.sirenEn=cfg.sirenEn=v;const e=$('f_sirenEn');if(e)e.checked=v}else{st.sirenLow=cfg.sirenActiveLow=v;const e=$('f_sirenActiveLow');if(e){e.checked=v;e.parentNode.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',(i==1)==v))}}
+ toast(k=='en'?(v?'Alarm bell on.':'Alarm bell off.'):(v?'Bell rings when the pin goes LOW.':'Bell rings when the pin goes HIGH.'))}catch(e){toast('Failed: '+e.message)}
+ bellBusy=false;$('bellEn').checked=!!st.sirenEn;$('bellHi').classList.toggle('on',!st.sirenLow);$('bellLo').classList.toggle('on',!!st.sirenLow);$('bellBtn').disabled=!st.sirenEn}
+// ---------- quick sensor switches (saved at once) ----------
+const SENS=[['soundEn','&#128066; Sound'],['motionEn','&#128065;&#65039; Motion'],['in1_en',1],['in2_en',2],['in3_en',3],['in4_en',4],['radarEn','&#128225; Radar'],['sonarEn','&#129415; Sonar']];
+function sensLabel(s){return typeof s[1]=='number'?'&#129700; '+esc(cfg['in'+s[1]+'_name']||('Input '+s[1])):s[1]}
+function drawSens(){if(!cfg||cfg.soundEn===undefined)return;const any=SENS.some(s=>cfg[s[0]]);
+ $('sensChips').innerHTML=SENS.map(s=>`<span class="chip ${cfg[s[0]]?'on':''}" onclick="sensSet({${s[0]}:${!cfg[s[0]]}})">${sensLabel(s)}</span>`).join('');
+ $('allSens').textContent=any?'All off':'All back on'}
+async function sensSet(o){try{await api('/api/config',{method:'POST',body:JSON.stringify(o)});Object.assign(cfg,o);
+ Object.keys(o).forEach(k=>{const e=$('f_'+k);if(e)e.checked=o[k]});if(setLoaded)refreshOnOff();drawSens()}catch(e){toast('Failed: '+e.message)}}
+function allSensors(){const on=SENS.filter(s=>cfg[s[0]]).map(s=>s[0]);let o={};
+ if(on.length){try{localStorage.setItem('sensWereOn',JSON.stringify(on))}catch(e){}SENS.forEach(s=>o[s[0]]=false);toast('All sensors off. The camera still watches the live view.')}
+ else{let was=['motionEn'];try{was=JSON.parse(localStorage.getItem('sensWereOn'))||was}catch(e){}was.forEach(k=>o[k]=true);toast('Sensors back on.')}
+ sensSet(o)}
 let radarDrag=null;
 async function radarSave(){const v=radarDrag;try{const r=await (await api('/api/radarmm?mm='+v,{method:'POST'})).text();st.radarMaxMm=cfg.radarMaxMm=+r;
  const f=$('f_radarMaxMm');if(f)f.value=+r;toast('The radar now watches out to '+(r/1000).toFixed(1)+' m.')}catch(e){toast('Failed: '+e.message)}radarDrag=null}
@@ -475,8 +508,20 @@ const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slip
  ['Pigeon Post','&#128038;&#128225;','Carrier pigeons with LoRa radios. Flies miles over the woods with no Wi-Fi and no phone signal.','LoRa','#558b2f'],
  ['Camp','&#9978;&#65039;&#128164;','Holmes on holiday: sleeps on a battery, wakes for intruders, opens the hotspot when you press BOOT.','Camp','#33691e'],
  ['Diogenes Club','&#127963;&#65039;&#129323;','Mycroft never speaks, but he reads every report: MQTT and Home Assistant.','MQTT / HA','#455a64']];
+const ACTS=[['photo','&#128247;','Photos'],['video','&#127909;','Video'],['audio','&#127908;','Audio'],['notify','&#128232;','Alert'],['siren','&#128276;','Bell']];
+function segPick(b,id,val){const e=$(id);if(e.type=='checkbox')e.checked=val=='1';else e.value=val;
+ b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==b))}
+function segOf(f,id,v,isBool){const opts=f.o.split('|').map(o=>{const i=o.indexOf(':');return [o.slice(0,i),o.slice(i+1)]});
+ const cur=isBool?(v?'1':'0'):String(v);
+ return `<span class="seg">${isBool?`<input type="checkbox" id="${id}" hidden ${v?'checked':''}>`:`<input type="hidden" id="${id}" value="${esc(cur)}">`}${opts.map(([k,l])=>`<button type="button" class="${k==cur?'on':''}" onclick="segPick(this,'${id}','${k}')">${esc(l)}</button>`).join('')}</span>`}
 function field(f){const v=cfg[f.k],id='f_'+f.k;let input;
- if(f.t=='b')input=`<input type="checkbox" id="${id}" ${v?'checked':''}>`;
+ const am=f.t=='b'&&f.k.match(/^(.*)_(photo|video|audio|notify|siren)$/);
+ if(am){if(am[2]!='photo')return '';  // the five actions share one row of chips
+  return `<div class="acts"><span class="small" style="margin-right:4px">When it fires:</span>${ACTS.map(a=>{const k=am[1]+'_'+a[0];
+   return `<label class="chip" title="${a[2]}"><input type="checkbox" id="f_${k}" ${cfg[k]?'checked':''}>${a[1]} ${a[2]}</label>`}).join('')}</div>`}
+ if(f.t=='b'&&f.o)input=segOf(f,id,v,true);
+ else if(f.t=='b')input=`<label class="sw"><input type="checkbox" id="${id}" ${v?'checked':''}><span></span></label>`;
+ else if(f.t=='e'&&f.o.split('|').length<=3)input=segOf(f,id,v,false);
  else if(f.t=='i'&&f.max-f.min<=200)input=`<span style="display:flex;gap:6px;align-items:center"><input type="range" value="${v}" min="${f.min}" max="${f.max}" style="width:130px;accent-color:var(--red)"
   oninput="$('${id}').value=this.value"><input type="number" id="${id}" value="${v}" min="${f.min}" max="${f.max}" style="width:70px" oninput="this.previousElementSibling.value=this.value"></span>`;
  else if(f.t=='i')input=`<input type="number" id="${id}" value="${v}" min="${f.min}" max="${f.max}">`;
@@ -517,6 +562,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.7','2026-11-07','The Tidy Study',['Cleaner settings: ON/OFF switches, HIGH/LOW buttons instead of drop-downs, and the five actions as one row of chips', 'Alarm bell: ON/OFF switch and Active HIGH / Active LOW buttons, also on The Scene (applied at once)', 'Sensors row on The Scene: switch each sensor on or off, or all at once (All back on restores the ones you had)']],
  ['3.6','2026-11-07','The Problem of the Vanishing Card',['Radar trigger distance slider on The Scene, saved at once without restarting the radar', 'Fix: the piezo tone could take the camera clock (LEDC timer 0) and stop the pictures', 'The camera restarts itself if no pictures arrive, and a missing SD card is retried every minute', 'Restarts say which watchdog fired; a normal software restart is no longer shown in red']],
  ['3.5','2026-11-06','The Adventure of the Singing Piezo',['Alarm bell: new Piezo wail and Piezo beeps sounds, so a passive piezo really sounds instead of clicking','Tripwire debounce is now a setting (Baker Street HQ), and pins are read every 5 ms','The Scene refreshes its lamps twice a second']],
  ['3.4','2026-11-06','The Case of the Silent Bell',['Fix: the alarm bell on D1 did nothing, because the camp wake pin (also D1) was reset to an input even with camp mode off','Fix: a tripwire showed ? after saving settings until the pin changed','Warning when the camp wake pin is also the alarm bell or IR lamp pin']],
@@ -572,7 +618,7 @@ function ota(){const f=$('fw').files[0];if(!f){toast('Choose a .bin first.');ret
 async function restart(){if(!confirm('Restart the device?'))return;try{await api('/api/restart',{method:'POST'})}catch(e){}toast('Restarting... back in 15 seconds.');setTimeout(()=>location.reload(),15000)}
 
 // ---------- go ----------
-(async()=>{show(tab);await status();try{cfg=await (await api('/api/config')).json();zones=cfg.zones.filter(z=>z.w>0);renderZones()}catch(e){}
+(async()=>{show(tab);await status();try{cfg=await (await api('/api/config')).json();zones=cfg.zones.filter(z=>z.w>0);renderZones();drawSens()}catch(e){}
  snap();setInterval(()=>{if(tab=='scene'||Date.now()-stLast>=1000)status()},500);setInterval(snap,3000);setInterval(()=>{loadGrid().then(paint)},1000);setInterval(()=>{if(tab=='log')loadLog()},4000);
  window.addEventListener('resize',paint)})();
 </script></body></html>)rawliteral";
