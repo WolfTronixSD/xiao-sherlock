@@ -2,6 +2,10 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.8 (2026-11-07): The Adventure of the Second Witness
+- The Second Witness: optionally only alarm when two different sensors fire within a few seconds (fewer false alarms from animals and wind)
+- Tripwire 4 defaults to an RCWL-0516 microwave sensor (pull-down, goes HIGH)
+
 ## 3.7.1 (2026-11-07)
 - Firmware version, date and time (the board's clock) under the title on every page.
 - The radar's ESP TX pin is optional: the firmware only listens, so one data wire (radar TX to D7) is enough.

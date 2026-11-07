@@ -200,9 +200,35 @@ void janitorStart() { xTaskCreatePinnedToCore(janitorTask, "janitor", 6144, null
 
 // ---------- event dispatcher ----------
 static uint32_t lastFire[SRC_COUNT] = {};
+static uint32_t lastSeen[SRC_COUNT] = {};  // every sighting, for the two-witnesses rule
+
+// Another sensor (not this one, not the test button) fired within witnessSec?
+static int otherWitness(Source src, uint32_t now) {
+  for (int s = 0; s < SRC_TEST; s++)
+    if (s != src && lastSeen[s] && now - lastSeen[s] <= cfg.witnessSec * 1000UL) return s;
+  return -1;
+}
 
 void raiseEvent(Source src, const String &who, const String &detail) {
   if (!cfg.armed && src != SRC_TEST) return;
+  String confirmedBy;
+  if (src != SRC_TEST) {
+    uint32_t t = millis();
+    int w = otherWitness(src, t);
+    lastSeen[src] = t;
+    // a quiet camp wake has only the PIR to go on, so it never waits for a second witness
+    if (cfg.witnessEn && !campQuiet()) {
+      if (w < 0) {
+        static uint32_t lastNote[SRC_COUNT] = {};
+        if (!lastNote[src] || t - lastNote[src] > 30000UL) {
+          lastNote[src] = t;
+          logEvent("witness", who, detail + " - one witness only, waiting " + String(cfg.witnessSec) + " s for a second sensor");
+        }
+        return;
+      }
+      confirmedBy = String(" (confirmed by ") + sourceName((Source)w) + ")";
+    }
+  }
   Actions a = actionsFor(src);
   String tag = safeTag(String(sourceName(src)) + "-" + who);
   if (a.audio) audioRequest(tag, cfg.audioTrigSec);  // audio keeps extending while events continue
@@ -215,7 +241,7 @@ void raiseEvent(Source src, const String &who, const String &detail) {
   if (a.audio) what += "audio ";
   if (a.notify && telegramReady()) what += "telegram ";
   if (a.siren) what += "alarm-bell ";
-  logEvent(sourceName(src), who, detail + " | " + sensorSnapshot() + (what.length() ? " | recording " + what : ""));
+  logEvent(sourceName(src), who, detail + confirmedBy + " | " + sensorSnapshot() + (what.length() ? " | recording " + what : ""));
   mqttEvent(sourceName(src), who, detail);
   if (a.siren) sirenSound(cfg.sirenSec, String(who) + " - " + detail);
   if (a.photo) cameraRequestPhotos(tag);

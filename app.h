@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.7.1"
+#define FW_VERSION "3.8"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -27,7 +27,9 @@ struct Config {
   char webPass[33] = "";
   char tz[48] = "PST8PDT,M3.2.0,M11.1.0";
   int  cooldownSec = 10;
-  int  debounceMs = 50;     // a tripwire pin must hold its new level this long
+  int  debounceMs = 50;
+  bool witnessEn = false;   // two witnesses: an alarm needs two different sensors within witnessSec
+  int  witnessSec = 8;     // a tripwire pin must hold its new level this long
   bool autoClean = true;
   int  cleanPct = 90;       // delete the oldest day when the card is fuller than this
   // schedule and phone presence

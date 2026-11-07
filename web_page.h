@@ -498,6 +498,7 @@ function jumpTo(i){const f=$('sec'+i);f.querySelector('details').open=true;f.scr
 function openAll(o){document.querySelectorAll('#form details').forEach(d=>d.open=o)}
 // icon, tagline, tile label and colour per settings section (matched by a word in the section title)
 const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slippers, his violin and the master switch.','HQ','#7b1e1e'],
+ ['Second Witness','&#128373;&#65039;&#129309;','Two sensors must agree before the alarm sounds. One startled cat is not a burglar.','Witness','#4a6b2e'],
  ['Timetable','&#128197;&#128373;&#65039;','Mrs. Hudson locks up at night and unlocks when you come home. She notices your phone.','Timetable','#8e5a1e'],
  ['Telegraph Office','&#128225;&#9749;','How the house talks to the outside world. Leave Wi-Fi blank to keep the built-in network.','Wi-Fi','#1f5f8b'],
  ['Telegram Boy','&#128692;&#128232;','A lad on a bicycle who rushes news to your pocket. Faster than Royal Mail.','Telegram','#2a8bc9'],
@@ -566,6 +567,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.8','2026-11-07','The Adventure of the Second Witness',['The Second Witness: optionally only alarm when two different sensors fire within a few seconds (fewer false alarms from animals and wind)', 'Tripwire 4 defaults to an RCWL-0516 microwave sensor (pull-down, goes HIGH)']],
  ['3.7','2026-11-07','The Tidy Study',['Cleaner settings: ON/OFF switches, HIGH/LOW buttons instead of drop-downs, and the five actions as one row of chips', 'Alarm bell: ON/OFF switch and Active HIGH / Active LOW buttons, also on The Scene (applied at once)', 'Sensors row on The Scene: switch each sensor on or off, or all at once (All back on restores the ones you had)']],
  ['3.6','2026-11-07','The Problem of the Vanishing Card',['Radar trigger distance slider on The Scene, saved at once without restarting the radar', 'Fix: the piezo tone could take the camera clock (LEDC timer 0) and stop the pictures', 'The camera restarts itself if no pictures arrive, and a missing SD card is retried every minute', 'Restarts say which watchdog fired; a normal software restart is no longer shown in red']],
  ['3.5','2026-11-06','The Adventure of the Singing Piezo',['Alarm bell: new Piezo wail and Piezo beeps sounds, so a passive piezo really sounds instead of clicking','Tripwire debounce is now a setting (Baker Street HQ), and pins are read every 5 ms','The Scene refreshes its lamps twice a second']],
