@@ -31,6 +31,7 @@ Every setting is changed in the web GUI and stored on the device: Wi-Fi, web pas
 | Door reed switch | pin - switch - GND. Input mode *Pull-up*, trigger *goes HIGH* (door opens) |
 | PIR (HC-SR501, AM312) | OUT - pin, VCC - 5V/3V3, GND. *No pull*, *goes HIGH* |
 | HLK-LD2450 | radar TX - ESP RX pin, radar RX - ESP TX pin (defaults D7/D6), 5V, GND. 256000 baud |
+| MPU6050 (GY-521) | VCC - 3V3, GND, SDA - D2, SCL - D3 (INT not needed). Screw it down firmly. Tilt (jacked up, towed) and shock (smashed window) alarms |
 | HC-SR04 | TRIG - pin, ECHO - pin **through a 5V to 3.3V divider** (e.g. 1k/2k), VCC 5V |
 
 Pins are checked for clashes. A sensor whose pin is already taken is disabled and a warning is shown.

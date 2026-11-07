@@ -102,6 +102,12 @@ static void handleStatus() {
   d["sonarEn"] = cfg.sonarEn;
   d["sonarCm"] = live.sonarCm;
   d["sonarLimit"] = cfg.sonarCm;
+  d["shakeEn"] = cfg.shakeEn;
+  d["shakeOK"] = live.shakeOK;
+  d["tilt"] = (float)live.tiltDeg;
+  d["shock"] = (float)live.shockG;
+  d["tiltLim"] = cfg.shakeTiltDeg;
+  d["shockLim"] = cfg.shakeShockMg;
   String s;
   serializeJson(d, s);
   sendJson(s);
@@ -560,6 +566,7 @@ void webStart() {
     saveConfig();
     server.send(200, "text/plain", String(cfg.radarMaxMm));
   });
+  ROUTE("/api/level", HTTP_POST, { shakeLevelNow(); logEvent("config", "web", "seismograph: resting angle taken now"); server.send(200, "text/plain", "ok"); });
   ROUTE("/api/test", HTTP_POST, { raiseEvent(SRC_TEST, "Inspector Lestrade", "manual test from the web page"); server.send(200, "text/plain", "ok"); });
   ROUTE("/api/tg/test", HTTP_POST, { if (!telegramReady()) { server.send(400, "text/plain", "Enable Telegram and fill in token and chat ID first, then save."); return; } telegramAlert("221B test: Inspector Lestrade checks the telegraph. All in order.", true, true); server.send(200, "text/plain", "Telegram sent - check your phone"); });
   ROUTE("/api/tg/findchat", HTTP_POST, server.send(200, "text/plain", telegramFindChat()));

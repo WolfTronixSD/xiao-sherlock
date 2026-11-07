@@ -5,13 +5,13 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.12.2"
+#define FW_VERSION "3.13.0"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
 
 // ---------- event sources ----------
-enum Source { SRC_SOUND, SRC_MOTION, SRC_INPUT1, SRC_INPUT2, SRC_INPUT3, SRC_INPUT4, SRC_RADAR, SRC_SONAR, SRC_IRREG, SRC_TEST, SRC_COUNT };
+enum Source { SRC_SOUND, SRC_MOTION, SRC_INPUT1, SRC_INPUT2, SRC_INPUT3, SRC_INPUT4, SRC_RADAR, SRC_SONAR, SRC_SHAKE, SRC_IRREG, SRC_TEST, SRC_COUNT };
 
 struct Actions { bool photo, video, audio, notify, siren; };
 struct Input   { bool en; char name[20]; int pin; int pull; int edge; Actions act; };
@@ -76,6 +76,13 @@ struct Config {
   int  sonarEcho = 4;
   int  sonarCm = 100;
   Actions sonarAct = {true, false, false, true};
+  // the Seismograph: MPU6050 tilt and shock (I2C)
+  bool shakeEn = false;
+  int  shakeSda = 3;        // D2
+  int  shakeScl = 4;        // D3
+  int  shakeTiltDeg = 3;    // alarm when tilted this much from the resting angle (0 = off)
+  int  shakeShockMg = 150;  // alarm on a jolt stronger than this (milli-g, 0 = off)
+  Actions shakeAct = {true, true, true, true};
   // the Baker Street Irregulars: phones nearby (Wi-Fi probe requests)
   bool irrEn = false;
   int  irrRssi = -80;       // only count devices stronger than this (dBm)
@@ -144,6 +151,9 @@ struct LiveState {
   RadarTarget   radar[3] = {};
   volatile bool radarSeen = false;   // got frames from the radar
   volatile int  sonarCm = -1;
+  volatile int  shakeOK = -1;        // MPU6050: -1 off, 0 not found, 1 working
+  volatile float tiltDeg = 0;        // tilt from the resting angle
+  volatile float shockG = 0;         // biggest jolt in the last 2 s
   volatile int  phoneHome = -1;      // -1 not watched, 0 away, 1 home
   bool sdOK = false;
   uint32_t freeMB = 0;
@@ -222,6 +232,7 @@ void audioRequest(const String &tag, int seconds);
 
 // ---------- sensors.cpp ----------
 void sensorsApplyConfig();
+void shakeLevelNow();  // take the current angle as the resting angle
 void sensorsStart();
 
 // ---------- telegram.cpp ----------
