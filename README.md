@@ -12,9 +12,9 @@ A security recorder for the **Seeed XIAO ESP32S3 Sense** that watches, listens a
 | Someone approaching | HLK-LD2450 24 GHz radar (up to 3 targets, shown on a radar plot) | photos, video, audio |
 | Something close | HC-SR04 ultrasonic | photos, video, audio |
 
-Everything is saved to the microSD card in `/sec/`:
+Everything is saved to the microSD card in `/sec/`, one folder per day (`/sec/2026_11_06/`):
 
-- `YYYYMMDD_HHMMSS_<source>-<name>_N.jpg`: photos
+- `YYYY_MM_DD_HHMMSS_Ddd__<source>-<name>_N.jpg`: photos, e.g. `2026_11_06_091801_Fri__motion-Biscuit-tin_1.jpg` (files from before 3.11 are named `YYYYMMDD_HHMMSS_...`)
 - `..._<source>-<name>.avi`: MJPEG video (plays in VLC / Windows Media Player)
 - `..._<source>-<name>.wav`: 16 kHz mono audio
 - `caselog.csv`: every event with time, source, pin and level, mic dB, motion %, radar targets and distance

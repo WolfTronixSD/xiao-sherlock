@@ -194,15 +194,18 @@ static void listDay(const String &day, std::function<void(const char *, uint32_t
   static FF_DIR dir;
   static FILINFO fi;
   uint32_t seen = 0;
+  char k[9];
+  String newStyle = day.substring(0, 4) + "_" + day.substring(4, 6) + "_" + day.substring(6, 8);
   for (char drv = '0'; drv <= '1'; drv++) {
     String root = String(drv) + ":/sec";
     if (f_opendir(&dir, root.c_str()) != FR_OK) continue;
     while (f_readdir(&dir, &fi) == FR_OK && fi.fname[0]) {
       if ((++seen & 31) == 0) vTaskDelay(1);
-      if (!(fi.fattrib & AM_DIR) && !strncmp(fi.fname, day.c_str(), 8)) fn(fi.fname, (uint32_t)fi.fsize);
+      if (!(fi.fattrib & AM_DIR) && evidenceDay(fi.fname, k) && day == k) fn(fi.fname, (uint32_t)fi.fsize);
     }
     f_closedir(&dir);
-    if (f_opendir(&dir, (root + "/" + day).c_str()) == FR_OK) {
+    for (const String &folder : {day, newStyle}) {
+      if (f_opendir(&dir, (root + "/" + folder).c_str()) != FR_OK) continue;
       while (f_readdir(&dir, &fi) == FR_OK && fi.fname[0]) {
         if ((++seen & 31) == 0) vTaskDelay(1);
         if (!(fi.fattrib & AM_DIR)) fn(fi.fname, (uint32_t)fi.fsize);
@@ -267,19 +270,20 @@ static void libBuild() {
       strlcpy(list[i].name, name, sizeof(list[i].name)); list[i].size = size;
       std::push_heap(heap.begin(), heap.end(), newer);
     }
-    size_t len = strlen(name);
-    if (len < 17 || name[8] != '_' || name[15] != '_') return true;  // the case log and other odd names
-    for (int i : {0, 1, 2, 3, 4, 5, 6, 7, 9, 10}) if (!isdigit((unsigned char)name[i])) return true;
-    DayStat &d = days[String(name).substring(0, 8)];
+    char key[9];
+    int sec = 0;
+    const char *tag = nullptr;
+    if (!evidenceDay(name, key, &sec, &tag)) return true;  // the case log and other odd names
+    DayStat &d = days[String(key)];
     const char *ext = strrchr(name, '.');
     if (ext && !strcmp(ext, ".jpg")) d.jpg++;
     else if (ext && !strcmp(ext, ".avi")) d.avi++;
     else if (ext && !strcmp(ext, ".wav")) d.wav++;
     else d.other++;
     d.bytes += size;
-    int h = (name[9] - '0') * 10 + name[10] - '0';
+    int h = sec / 3600;
     if (h < 24) d.hours[h]++;
-    const char *tag = name + 16, *end = strpbrk(tag, "-_.");
+    const char *end = strpbrk(tag, "-_.");
     d.src[String(tag).substring(0, end ? end - tag : strlen(tag))]++;
     return true;
   }, true);
@@ -447,7 +451,8 @@ int deleteDay(const String &day, bool keepLog) {
     lockSD();
     listSec([&](const char *folder, const char *name, uint32_t) {
       if (keepLog && !strcmp(name, "caselog.csv")) return true;
-      if (!all && strncmp(name, day.c_str(), 8)) return true;
+      char k[9];
+      if (!all && (!evidenceDay(name, k) || day != k)) return true;
       if (*folder && std::find(dirs.begin(), dirs.end(), folder) == dirs.end()) dirs.push_back(folder);
       names.push_back(String(SEC_DIR "/") + (*folder ? String(folder) + "/" : "") + name);
       return names.size() < 100;
@@ -472,13 +477,13 @@ int deleteDay(const String &day, bool keepLog) {
 
 // The oldest day that has evidence, other than today ("" if there is none)
 String oldestDay() {
-  String today = timeValid() ? stamp().substring(0, 8) : "";
+  String today = todayKey();
   char best[9] = "";
   lockSD();
   listSec([&](const char *, const char *name, uint32_t) {
-    if (strlen(name) < 9 || name[8] != '_') return true;
-    for (int i = 0; i < 8; i++) if (!isdigit((unsigned char)name[i])) return true;
-    if ((!best[0] || strncmp(name, best, 8) < 0) && strncmp(name, today.c_str(), 8)) strlcpy(best, name, 9);
+    char k[9];
+    if (!evidenceDay(name, k)) return true;
+    if ((!best[0] || strcmp(k, best) < 0) && today != k) strlcpy(best, k, 9);
     return true;
   });
   unlockSD();

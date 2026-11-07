@@ -4,6 +4,7 @@ The same history is shown in the web GUI under **The Workshop**.
 
 ## 3.11.0 (2026-11-07): The librarian and the telegraph
 - Evidence Locker: with thousands of files the file list took 25 s and the browser gave up ("The locker is jammed: Failed to fetch"), and the statistics came back empty. A background librarian now walks the card and keeps the newest 600 files and the statistics ready, so the page answers at once. The walk hands the SD card back every 64 files, so recording carries on, and picking the newest files no longer rescans the whole list for each file. The timeline only reads the chosen day's folder.
+- New file names with the weekday, easier to read: `2026_11_06_091801_Fri__motion-Biscuit-tin.avi` in the day folder `2026_11_06`. Old names and folders (`20261106_091801_...`) still show up, count and delete as before.
 - Telegram commands: switch on *Two-way: accept commands from your chat* in The Telegram Boy and send the bot status, arm, disarm, ring, quiet, snooze 30, photo, sleep or help (with or without /). Only your own chat ID is obeyed. Photo sends a picture back. Commands older than 2 minutes (sent while the camera was off) are skipped. Listening pauses when memory is low.
 
 ## 3.10.2 (2026-11-07): The locker door

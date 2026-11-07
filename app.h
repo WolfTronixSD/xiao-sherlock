@@ -194,6 +194,8 @@ bool mountSD();
 File openSD(const String &path, const char *mode);
 bool timeValid();
 String stamp();
+String todayKey();  // "YYYYMMDD" or "" without a clock
+bool evidenceDay(const char *name, char *day, int *sec = nullptr, const char **tag = nullptr);
 String clockText();
 String safeTag(const String &s);
 void logEvent(const String &kind, const String &who, const String &detail);

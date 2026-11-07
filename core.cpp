@@ -33,25 +33,50 @@ File openSD(const String &path, const char *mode) {
 }
 
 // ---------- evidence folders ----------
-// New evidence goes into one folder per day (/sec/20261105/...): FAT gets very slow at creating files
+// New evidence goes into one folder per day (/sec/2026_11_05/...): FAT gets very slow at creating files
 // in a folder with thousands of entries. Older files may still sit directly in /sec.
 // openSD() creates the day folder when the first file of the day is written.
 
-static bool isDated(const String &name) {
-  if (name.length() < 9 || name[8] != '_') return false;
-  for (int i = 0; i < 8; i++) if (!isdigit((unsigned char)name[i])) return false;
+// Evidence names, new style: 2026_11_06_091801_Fri__motion-Biscuit-tin.avi (day folder /sec/2026_11_06)
+//                 old style: 20261106_091801_motion-Biscuit-tin.avi        (day folder /sec/20261106)
+// evidenceDay() reads either: day = "YYYYMMDD", sec = seconds since midnight, tag = what comes after the stamp.
+static bool digits(const char *p, int n) { for (int i = 0; i < n; i++) if (!isdigit((unsigned char)p[i])) return false; return true; }
+
+bool evidenceDay(const char *n, char *day, int *sec, const char **tag) {
+  size_t len = strlen(n);
+  const char *t;
+  if (len >= 16 && digits(n, 8) && n[8] == '_' && digits(n + 9, 6) && n[15] == '_') {
+    if (day) { memcpy(day, n, 8); day[8] = 0; }
+    t = n + 9;
+    if (tag) *tag = n + 16;
+  } else if (len >= 23 && digits(n, 4) && n[4] == '_' && digits(n + 5, 2) && n[7] == '_' && digits(n + 8, 2) && n[10] == '_' &&
+             digits(n + 11, 6) && n[17] == '_' && n[21] == '_' && n[22] == '_') {
+    if (day) { memcpy(day, n, 4); memcpy(day + 4, n + 5, 2); memcpy(day + 6, n + 8, 2); day[8] = 0; }
+    t = n + 11;
+    if (tag) *tag = n + 23;
+  } else return false;
+  if (sec) *sec = ((t[0] - '0') * 10 + t[1] - '0') * 3600 + ((t[2] - '0') * 10 + t[3] - '0') * 60 + (t[4] - '0') * 10 + t[5] - '0';
   return true;
 }
 
+// The day folder a file belongs in ("" = straight in /sec)
+static String dayFolder(const String &name) {
+  char d[9];
+  if (!evidenceDay(name.c_str(), d)) return "";
+  if (name[4] == '_') return name.substring(0, 10);  // new style: 2026_11_06
+  return String(d);                                  // old style: 20261106
+}
+
 String evidencePath(const String &name) {
-  if (!isDated(name)) return String(SEC_DIR "/") + name;
-  return String(SEC_DIR "/") + name.substring(0, 8) + "/" + name;
+  String f = dayFolder(name);
+  return String(SEC_DIR "/") + (f.length() ? f + "/" : String("")) + name;
 }
 
 // Where an existing file lives (day folder or the old flat /sec). Call with the SD lock held.
 String findEvidence(const String &name) {
-  if (isDated(name)) {
-    String p = String(SEC_DIR "/") + name.substring(0, 8) + "/" + name;
+  String f = dayFolder(name);
+  if (f.length()) {
+    String p = String(SEC_DIR "/") + f + "/" + name;
     if (SD.exists(p)) return p;
   }
   return String(SEC_DIR "/") + name;
@@ -68,7 +93,9 @@ static String fmtTime(const char *fmt) {
   return b;
 }
 
-String stamp() { return timeValid() ? fmtTime("%Y%m%d_%H%M%S") : "boot" + String(millis() / 1000); }
+// "2026_11_06_091801_Fri_": callers add "_" + tag, giving "..._Fri__motion-Biscuit-tin"
+String stamp() { return timeValid() ? fmtTime("%Y_%m_%d_%H%M%S_%a_") : "boot" + String(millis() / 1000); }
+String todayKey() { return timeValid() ? fmtTime("%Y%m%d") : String(""); }
 String clockText() { return timeValid() ? fmtTime("%Y-%m-%d %H:%M:%S") : "+" + String(millis() / 1000) + "s"; }
 
 String safeTag(const String &s) {
