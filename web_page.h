@@ -16,9 +16,15 @@ header{display:flex;flex-wrap:wrap;align-items:center;gap:14px;border-bottom:3px
  padding:4px 16px;border-radius:6px;box-shadow:inset 0 0 0 2px #7a5a28,0 2px 4px rgba(0,0,0,.35);text-shadow:0 1px 0 #f3dfa8}
 h1{font-family:'IM Fell English SC',serif;font-weight:normal;margin:0;font-size:24px;line-height:1.1}
 .quip{font-style:italic;color:var(--faded);font-size:13px;min-height:1.2em}
+.watch{display:flex;align-items:center;gap:12px;background:radial-gradient(circle at 30% 25%,#fff8e6,#efdcae 70%);border:2px solid #b08d57;border-radius:14px;padding:6px 14px 6px 8px;box-shadow:inset 0 0 0 3px #f6ead0,0 2px 6px #0003}
+.dial{width:54px;height:54px;flex:none}.dial circle.face{fill:#fffaf0;stroke:#9c7840;stroke-width:3}.dial line{stroke:#2b1d0e;stroke-linecap:round}
+.wt{font-family:'IM Fell English SC',serif;font-size:28px;line-height:1;letter-spacing:1px;color:var(--ink)}.wt small{font-size:16px;color:var(--faded)}
+.wd{font-size:12px;color:var(--faded);font-style:italic}.wq{font-size:11px;color:var(--red)}
+.fw{display:inline-block;background:radial-gradient(circle at 35% 30%,#b53a3a,#6d1414);color:#f6e7c8;font-family:'IM Fell English SC',serif;font-size:12px;border-radius:50%;width:46px;height:46px;line-height:46px;text-align:center;box-shadow:0 2px 4px #0005,inset 0 0 0 3px #8e2424;transform:rotate(-12deg);flex:none}
 .seal{margin-left:auto;border:0;cursor:pointer;border-radius:50px;padding:12px 20px;font-family:'IM Fell English SC',serif;font-size:17px;color:#fff;
  background:radial-gradient(circle at 35% 30%,#b23a3a,#6d1414);box-shadow:0 3px 6px rgba(0,0,0,.4),inset 0 -3px 6px rgba(0,0,0,.4)}
 .seal.off{background:radial-gradient(circle at 35% 30%,#8a8a7a,#4e4e44)}
+.seal{display:flex;flex-direction:column;align-items:center;line-height:1.15}.seal b{font-size:19px;letter-spacing:1px}.seal small{font-family:Georgia,serif;font-size:11px;opacity:.85;font-style:italic}
 nav{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0}
 nav button{font-family:'IM Fell English SC',serif;font-size:16px;background:var(--paper2);border:1px solid var(--faded);border-bottom:0;
  border-radius:8px 8px 0 0;padding:7px 14px;cursor:pointer;color:var(--ink)}
@@ -113,8 +119,13 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
 </style></head><body><div class="wrap">
 <header>
  <div class="plaque">221B</div>
- <div><h1>The Baker Street Irregular<br>Surveillance Society</h1><div class="quip" id="quip"></div><div class="small" id="hdrInfo"></div></div>
+ <div><h1>The Baker Street Irregular<br>Surveillance Society</h1><div class="quip" id="quip"></div></div>
  <span class="small" id="homeChip" style="margin-left:auto"></span>
+ <div class="watch" title="The board's own clock"><svg class="dial" viewBox="0 0 54 54"><circle class="face" cx="27" cy="27" r="24"/>
+  <g id="ticks"></g><line id="hH" x1="27" y1="27" x2="27" y2="15" stroke-width="3"/><line id="hM" x1="27" y1="27" x2="27" y2="9" stroke-width="2"/>
+  <line id="hS" x1="27" y1="30" x2="27" y2="7" stroke-width="1" style="stroke:#7b1e1e"/><circle cx="27" cy="27" r="2" fill="#7b1e1e"/></svg>
+  <div><div class="wt" id="wTime">--:--</div><div class="wd" id="wDate">winding the watch...</div><div class="wq" id="wQuip"></div></div>
+  <span class="fw" id="fwBadge" title="Firmware version">v?</span></div>
  <button id="seal" class="seal" onclick="toggleArm()">...</button>
 </header>
 <nav id="nav"></nav>
@@ -279,13 +290,24 @@ $('quip').textContent=pick(QUIPS);setInterval(()=>$('quip').textContent=pick(QUI
 // ---------- status / instruments ----------
 let st={},cfg={};
 let stBusy=false,stLast=0;
+// ---------- the pocket watch: the board's clock, ticking locally between status polls ----------
+let boardOff=null;
+$('ticks').innerHTML=[...Array(12)].map((_,i)=>{const a=i*Math.PI/6,r1=i%3?20:18;return `<line x1="${27+r1*Math.sin(a)}" y1="${27-r1*Math.cos(a)}" x2="${27+22*Math.sin(a)}" y2="${27-22*Math.cos(a)}" stroke-width="${i%3?1:2}"/>`}).join('');
+function hourQuip(h){return h<5?'The small hours. Even Moriarty sleeps.':h<8?'Dawn over Baker Street.':h<11?'Breakfast: kippers and a fresh case.':h<13?'Morning rounds, Watson.':h<15?'Luncheon at Simpson\'s.':h<17?'Tea is served. Biscuits are evidence.':h<19?'The lamps are being lit.':h<22?'A violin plays upstairs.':'The fog rolls in. Stay alert.'}
+function hand(id,deg){$(id).setAttribute('transform',`rotate(${deg} 27 27)`)}
+function watchTick(){if(boardOff==null){$('wTime').textContent='--:--';$('wDate').textContent='the clock is not set';return}
+ const d=new Date(Date.now()+boardOff),h=d.getHours(),m=d.getMinutes(),s=d.getSeconds();
+ $('wTime').innerHTML=`${String(h%12||12)}:${String(m).padStart(2,'0')}<small>:${String(s).padStart(2,'0')} ${h<12?'am':'pm'}</small>`;
+ $('wDate').textContent=d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+ $('wQuip').textContent=hourQuip(h);hand('hH',(h%12)*30+m/2);hand('hM',m*6);hand('hS',s*6)}
+setInterval(watchTick,1000);
 function hdrInfo(){const m=/^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)/.exec(st.time||'');
- const t=m?new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5],+m[6]).toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'clock not set';
- $('hdrInfo').textContent='Firmware v'+(st.fw||'?')+'  \u00b7  '+t}
+ boardOff=m?new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5],+m[6]).getTime()-Date.now():null;
+ $('fwBadge').textContent='v'+(st.fw||'?');watchTick()}
 async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=await (await api('/api/status')).json()}catch(e){return}finally{stBusy=false}
  hdrInfo();$('irrCard').style.display=st.irrEn?'':'none';if(st.irrEn&&tab=='scene')irrPoll();
  $('homeChip').textContent=st.phoneHome==1?'\u{1F4F1} Holmes is home':st.phoneHome==0?'\u{1F4F1} Holmes is out':'';
- const seal=$('seal');seal.textContent=st.armed?'The game is afoot!':'Holmes is off duty';seal.classList.toggle('off',!st.armed);
+ const seal=$('seal');seal.innerHTML=st.armed?'<b>\u{1F512} ARMED</b><small>The game is afoot! \u00b7 tap to disarm</small>':'<b>\u{1F513} DISARMED</b><small>Holmes is off duty \u00b7 tap to arm</small>';seal.title=st.armed?'Alarms are on. Tap to switch them off.':'Alarms are off. Tap to switch them on.';seal.classList.toggle('off',!st.armed);
  const pct=v=>Math.max(0,Math.min(100,(v+90)/90*100));
  $('micBar').style.width=pct(st.mic)+'%';if(thrDrag==null)$('micThr').style.left=pct(st.soundDb)+'%';$('micTxt').textContent=st.mic+' dB';
  $('recA').className='lamp'+(st.audioRec?' rec':'');$('recATxt').textContent=st.audioRec?'Watson is scribbling (recording audio)':"Watson's pencil is idle";
@@ -391,7 +413,7 @@ function renderZones(){$('zones').innerHTML=zones.map((z,i)=>`<tr><td><input typ
 async function saveZones(){try{await api('/api/config',{method:'POST',body:JSON.stringify({zones})});toast('Places of interest noted.')}catch(e){toast('Failed: '+e.message)}}
 
 // ---------- arm / test ----------
-async function toggleArm(){const on=st.armed?0:1;await api('/api/arm?on='+on,{method:'POST'});toast(on?'The game is afoot!':'Holmes retires to his violin.');status()}
+async function toggleArm(){const on=st.armed?0:1;if(!on&&!confirm('Disarm? Alerts, recordings and the bell stop until you arm again.'))return;await api('/api/arm?on='+on,{method:'POST'});toast(on?'The game is afoot!':'Holmes retires to his violin.');status()}
 async function sleepNow(){if(!confirm('Holmes sleeps until the wake pin or the BOOT button. The page goes dark. Proceed?'))return;try{await api('/api/sleep',{method:'POST'});toast('Good night, Holmes.')}catch(e){toast(e.message)}}
 async function meshTest(){$('meshMsg').textContent='Releasing the pigeon...';try{$('meshMsg').textContent=await (await api('/api/mesh/test',{method:'POST'})).text()}catch(e){$('meshMsg').textContent=e.message}}
 // camp mode has no internet clock: the visiting phone sets it (the house ignores it when its own clock is right)
@@ -494,7 +516,8 @@ async function loadSettings(){setLoaded=false;$('sealBtn').disabled=true;let s,c
  const groups={};schema.forEach(f=>(groups[f.g]=groups[f.g]||[]).push(f));
  const keys=Object.keys(groups),secOf=g=>SECTION.find(x=>g.includes(x[0]))||['','&#128269;','','More','#6b5536'];
  // a section counts as "on" when its first tick box is ticked (Detect motion, Radar enabled, ...); "Armed" for HQ
- const onOf=g=>{const b=groups[g].find(f=>f.t=='b');return b?!!cfg[b.k]:null};
+ // a section whose first field is a mode list starting with "Off" (Night Watch) is on when that list is not Off
+ const onOf=g=>{const k=onKey(groups[g]);return k?(typeof cfg[k]=='boolean'?cfg[k]:cfg[k]!=0):null};
  $('jump').innerHTML=keys.map((g,i)=>{const s=secOf(g),on=onOf(g),n=(g.match(/Tripwire (\d)/)||[])[1];
   return `<button style="--sc:${s[4]}" onclick="jumpTo(${i})"><span class="ico">${s[1]}</span>${s[3]}${n?' '+n:''}${on==null?'':`<i class="dot ${on?'on':''}"></i>`}</button>`}).join('');
  $('form').innerHTML=keys.map((g,i)=>{const s=secOf(g),on=onOf(g);
@@ -505,9 +528,10 @@ async function loadSettings(){setLoaded=false;$('sealBtn').disabled=true;let s,c
  setLoaded=true;$('sealBtn').disabled=false;$('saveMsg').textContent=''}
 // after saving, refresh the ON/off badges and the green dots on the tiles
 function refreshOnOff(){const groups={};schema.forEach(f=>(groups[f.g]=groups[f.g]||[]).push(f));
- Object.keys(groups).forEach((g,i)=>{const b=groups[g].find(f=>f.t=='b');if(!b)return;const on=$('f_'+b.k).checked,sec=$('sec'+i);
+ Object.keys(groups).forEach((g,i)=>{const k=onKey(groups[g]);if(!k)return;const e=$('f_'+k);if(!e)return;const on=e.type=='checkbox'?e.checked:e.value!='0',sec=$('sec'+i);
   const o=sec&&sec.querySelector('.onoff');if(o){o.textContent=on?'ON':'off';o.classList.toggle('on',on)}
   const d=$('jump').children[i]&&$('jump').children[i].querySelector('.dot');if(d)d.classList.toggle('on',on)})}
+function onKey(fs){const f=fs[0];if(f&&f.t=='e'&&/^0:Off\|/.test(f.o||''))return f.k;const b=fs.find(f=>f.t=='b');return b?b.k:null}
 function jumpTo(i){const f=$('sec'+i);f.querySelector('details').open=true;f.scrollIntoView({behavior:'smooth',block:'start'})}
 function openAll(o){document.querySelectorAll('#form details').forEach(d=>d.open=o)}
 // icon, tagline, tile label and colour per settings section (matched by a word in the section title)
@@ -530,7 +554,7 @@ const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slip
  ['Diogenes Club','&#127963;&#65039;&#129323;','Mycroft never speaks, but he reads every report: MQTT and Home Assistant.','MQTT / HA','#455a64']];
 const ACTS=[['photo','&#128247;','Photos'],['video','&#127909;','Video'],['audio','&#127908;','Audio'],['notify','&#128232;','Alert'],['siren','&#128276;','Bell']];
 function segPick(b,id,val){const e=$(id);if(e.type=='checkbox')e.checked=val=='1';else e.value=val;
- b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==b))}
+ b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==b));if(setLoaded)refreshOnOff()}
 function segOf(f,id,v,isBool){const opts=f.o.split('|').map(o=>{const i=o.indexOf(':');return [o.slice(0,i),o.slice(i+1)]});
  const cur=isBool?(v?'1':'0'):String(v);
  return `<span class="seg">${isBool?`<input type="checkbox" id="${id}" hidden ${v?'checked':''}>`:`<input type="hidden" id="${id}" value="${esc(cur)}">`}${opts.map(([k,l])=>`<button type="button" class="${k==cur?'on':''}" onclick="segPick(this,'${id}','${k}')">${esc(l)}</button>`).join('')}</span>`}
@@ -541,7 +565,7 @@ function field(f){const v=cfg[f.k],id='f_'+f.k;let input;
    return `<label class="chip" title="${a[2]}"><input type="checkbox" id="f_${k}" ${cfg[k]?'checked':''}>${a[1]} ${a[2]}</label>`}).join('')}</div>`}
  if(f.t=='b'&&f.o)input=segOf(f,id,v,true);
  else if(f.t=='b')input=`<label class="sw"><input type="checkbox" id="${id}" ${v?'checked':''}><span></span></label>`;
- else if(f.t=='e'&&f.o.split('|').length<=3)input=segOf(f,id,v,false);
+ else if(f.t=='e'&&(f.o.split('|').length<=3||(/^0:Off\|/.test(f.o)&&f.o.split('|').length<=4)))input=segOf(f,id,v,false);
  else if(f.t=='i'&&f.max-f.min<=200)input=`<span style="display:flex;gap:6px;align-items:center"><input type="range" value="${v}" min="${f.min}" max="${f.max}" style="width:130px;accent-color:var(--red)"
   oninput="$('${id}').value=this.value"><input type="number" id="${id}" value="${v}" min="${f.min}" max="${f.max}" style="width:70px" oninput="this.previousElementSibling.value=this.value"></span>`;
  else if(f.t=='i')input=`<input type="number" id="${id}" value="${v}" min="${f.min}" max="${f.max}">`;
@@ -582,6 +606,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.9.2','2026-11-07','The Pocket Watch',["The header carries a brass pocket watch with the board's time, the date, a remark for the hour, and the firmware version as a wax seal","The arm button now says plainly ARMED or DISARMED, with tap to disarm or arm underneath. Disarming asks first","The Night Watch on/off is now a row of buttons (Off, When dark, By the clock, Always on), and its ON badge follows it"]],
  ['3.9.1','2026-11-07','The Irregulars Lose Their Bluetooth',['Fix: switching the Irregulars on crashed the board (Bluetooth ran the chip out of memory). They now listen for phones on Wi-Fi only, and 30 KB of memory is back']],
  ['3.9','2026-11-07','The Baker Street Irregulars',['The Baker Street Irregulars: counts phones, watches and trackers nearby (Bluetooth LE and Wi-Fi probe requests) and raises the alarm when more than usual show up', 'The Irregulars card on The Scene with the nearby devices and a These are mine button']],
  ['3.8','2026-11-07','The Adventure of the Second Witness',['The Second Witness: optionally only alarm when two different sensors fire within a few seconds (fewer false alarms from animals and wind)', 'Tripwire 4 defaults to an RCWL-0516 microwave sensor (pull-down, goes HIGH)']],
