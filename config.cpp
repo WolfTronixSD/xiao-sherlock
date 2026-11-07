@@ -163,17 +163,15 @@ void buildFields() {
   addActions(g, "sonar", cfg.sonarAct);
 
   g = "The Baker Street Irregulars (phones and watches nearby)";
-  add(g, "irrEn", "Listen for phones, watches and trackers nearby", 'b', &cfg.irrEn, 0, 0, nullptr,
-      "Counts Bluetooth (BLE) devices and Wi-Fi probe requests around the house. Out in the wild there are none, so new ones mean someone is near. People without a phone or watch are invisible to it; animals never trigger it. Only counts are kept, nothing leaves the board. Uses about 40 KB of memory.");
-  add(g, "irrBle", "Listen to Bluetooth (BLE)", 'b', &cfg.irrBle);
-  add(g, "irrWifi", "Listen to Wi-Fi probe requests", 'b', &cfg.irrWifi);
+  add(g, "irrEn", "Listen for phones nearby (Wi-Fi)", 'b', &cfg.irrEn, 0, 0, nullptr,
+      "Counts phones around the house from the Wi-Fi probe requests they send while looking for known networks. Out in the wild there are none, so new ones mean someone is near. People without a phone (or with Wi-Fi off) are invisible to it; animals never trigger it. Needs Wi-Fi or the hotspot on. Only counts are kept, nothing leaves the board.");
   add(g, "irrRssi", "Only count devices stronger than (dBm)", 'i', &cfg.irrRssi, -100, -30, nullptr,
       "-50 is a few metres away, -80 tens of metres. The Scene shows the strongest devices so you can choose.");
   add(g, "irrBaseline", "Devices normally around (yours)", 'i', &cfg.irrBaseline, 0, 50, nullptr,
       "Press These are mine on The Scene to set it to the current count.");
   add(g, "irrExtra", "Alarm when this many more appear", 'i', &cfg.irrExtra, 1, 10);
   add(g, "irrHoldSec", "...and stay for at least (s)", 'i', &cfg.irrHoldSec, 5, 120, nullptr,
-      "Phones change their Bluetooth address every few minutes; waiting a little stops that from looking like a visitor.");
+      "Phones change their Wi-Fi address now and then; waiting a little stops that from looking like a visitor.");
   addActions(g, "irr", cfg.irrAct);
 
   g = "The Night Watch (IR lamp & black and white)";
