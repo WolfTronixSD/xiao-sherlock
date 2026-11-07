@@ -569,6 +569,7 @@ const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slip
  ['Tripwire','&#129700;&#128682;','Doors, PIRs and buttons. One wire, one suspect.','Tripwire','#a33b3b'],
  ['Radar','&#128752;&#65039;&#127787;&#65039;','Sees people through the London fog (and thin walls).','Radar','#00796b'],
  ['Bat Ears','&#129415;&#128266;','Squeaks at things and listens for the echo. The bat insists on a 5V-to-3.3V divider.','Ultrasonic','#6d4c41'],
+ ['Seismograph','&#128200;&#128663;','Feels the floor tremble and the carriage tilt. Knows when the engine wakes and when the battery tires.','Seismograph','#7a2e2e'],
  ['Night Watch','&#127769;&#128294;','When the gas lamps go out, Holmes lights his secret lantern and sees in black and white.','Night','#283593'],
  ['Alarm Bell','&#128680;&#128276;','A bell loud enough to wake Mycroft. Rings when a sensor with Ring the alarm bell ticked fires.','Alarm bell','#c62828'],
  ['Pigeon Post','&#128038;&#128225;','Carrier pigeons with LoRa radios. Flies miles over the woods with no Wi-Fi and no phone signal.','LoRa','#558b2f'],
@@ -628,6 +629,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.14.1','2026-11-07','A room of its own',["The Seismograph settings get their own tile instead of sitting under More"]],
  ['3.14.0','2026-11-07','The LIS3DH',["The Seismograph also works with a LIS3DH (found by itself, MPU6050 still works)","The LIS3DH's three spare inputs: an LDR for the night watch, the battery voltage, and the car's 12 V (alarm when the engine starts, warning when the battery runs low)"]],
  ['3.13.0','2026-11-07','The seismograph',["New sensor: MPU6050 tilt and shock, for the camp and against car break-ins (jacked up, towed, window smashed)","Live tilt and jolt on The Scene, with a Level now button"]],
 ['3.12.2','2026-11-07','A false alarm in the log',["The Telegram photo no longer reports 'could not save' when it did save"]],
