@@ -113,7 +113,7 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
 </style></head><body><div class="wrap">
 <header>
  <div class="plaque">221B</div>
- <div><h1>The Baker Street Irregular<br>Surveillance Society</h1><div class="quip" id="quip"></div></div>
+ <div><h1>The Baker Street Irregular<br>Surveillance Society</h1><div class="quip" id="quip"></div><div class="small" id="hdrInfo"></div></div>
  <span class="small" id="homeChip" style="margin-left:auto"></span>
  <button id="seal" class="seal" onclick="toggleArm()">...</button>
 </header>
@@ -274,7 +274,11 @@ $('quip').textContent=pick(QUIPS);setInterval(()=>$('quip').textContent=pick(QUI
 // ---------- status / instruments ----------
 let st={},cfg={};
 let stBusy=false,stLast=0;
+function hdrInfo(){const m=/^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)/.exec(st.time||'');
+ const t=m?new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5],+m[6]).toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'clock not set';
+ $('hdrInfo').textContent='Firmware v'+(st.fw||'?')+'  \u00b7  '+t}
 async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=await (await api('/api/status')).json()}catch(e){return}finally{stBusy=false}
+ hdrInfo();
  $('homeChip').textContent=st.phoneHome==1?'\u{1F4F1} Holmes is home':st.phoneHome==0?'\u{1F4F1} Holmes is out':'';
  const seal=$('seal');seal.textContent=st.armed?'The game is afoot!':'Holmes is off duty';seal.classList.toggle('off',!st.armed);
  const pct=v=>Math.max(0,Math.min(100,(v+90)/90*100));

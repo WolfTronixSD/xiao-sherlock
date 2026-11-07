@@ -2,6 +2,10 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.7.1 (2026-11-07)
+- Firmware version, date and time (the board's clock) under the title on every page.
+- The radar's ESP TX pin is optional: the firmware only listens, so one data wire (radar TX to D7) is enough.
+
 ## 3.7 (2026-11-07): The Tidy Study
 - Cleaner settings: ON/OFF switches, HIGH/LOW buttons instead of drop-downs, and the five actions as one row of chips
 - Alarm bell: ON/OFF switch and Active HIGH / Active LOW buttons, also on The Scene (applied at once)

@@ -143,7 +143,7 @@ void buildFields() {
   g = "The Radar (HLK-LD2450)";
   add(g, "radarEn", "Radar enabled", 'b', &cfg.radarEn);
   add(g, "radarRx", "ESP RX pin (to radar TX)", 'p', &cfg.radarRx);
-  add(g, "radarTx", "ESP TX pin (to radar RX)", 'p', &cfg.radarTx);
+  add(g, "radarTx", "ESP TX pin (to radar RX, optional)", 'p', &cfg.radarTx);
   add(g, "radarMaxMm", "Trigger when someone is closer than (mm)", 'i', &cfg.radarMaxMm, 100, 6000);
   addActions(g, "radar", cfg.radarAct);
 
