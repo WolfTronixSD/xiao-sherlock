@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.12.2 (2026-11-07): A false alarm in the log
+- The Telegram photo was saved to the card, but the case log said "could not save" (the check ran after the file was closed).
+
 ## 3.12.1 (2026-11-07): Room to breathe
 - Memory: Telegram's encryption buffers (about 40 KB per connection) now live in the PSRAM. With the bot listening for commands they sat in the internal RAM, which dropped to 0 KB and made saving files fail at times.
 
