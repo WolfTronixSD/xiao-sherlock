@@ -216,10 +216,11 @@ void buildFields() {
   add(g, "meshGapSec", "At most one LoRa text every (s)", 'i', &cfg.meshGapSec, 5, 3600, nullptr,
       "LoRa is slow and shared. One minute keeps the channel friendly.");
   add(g, "meshCmdEn", "Two-way: accept commands over LoRa", 'b', &cfg.meshCmdEn, 0, 0, nullptr,
-      "Needs the ESP RX pin wired to the radio's TX. Text the channel: 221B PIN arm, disarm, status, ring, quiet, snooze 30, photo, sleep or help. "
+      "Needs the ESP RX pin wired to the radio's TX. Text the channel just the word: status, arm, disarm, ring, quiet, snooze 30, photo, sleep or help "
+      "(with a PIN set: PIN status). The camera answers right away. "
       "Use a private Meshtastic channel with your own key: anyone on the default channel could read these texts.");
-  add(g, "meshPin", "Command PIN (needed in every command)", 'w', cfg.meshPin, 0, sizeof(cfg.meshPin), nullptr,
-      "Commands without the right PIN are ignored and written to the case log. With no PIN set, no commands are accepted.");
+  add(g, "meshPin", "Command PIN (optional)", 'w', cfg.meshPin, 0, sizeof(cfg.meshPin), nullptr,
+      "Empty = no PIN: anyone on your private channel can send commands. With a PIN, write it before the command (1234 status); wrong PINs are logged and 5 lock commands for 10 minutes.");
 
   g = "The Camp (battery, sleep and hotspot)";
   add(g, "campEn", "Camp mode: sleep deeply between visitors", 'b', &cfg.campEn, 0, 0, nullptr,

@@ -3,6 +3,7 @@
 The same history is shown in the web GUI under **The Workshop**.
 
 ## 3.10.2 (2026-11-07): The locker door
+- LoRa commands: just send `status`, `arm`, `snooze 30`... as the whole message, no "221B" in front needed (it still works). The Command PIN is now optional: leave it empty to accept commands without one. Ring and photo confirm before they start, and a missing PIN gets a hint back.
 - Fix: the Evidence Locker statistics (and the file list) walked thousands of SD files in one go inside the web task, starving core 0's idle task, so the task watchdog restarted the board in a loop. The walk now yields every 32 entries, and the statistics answer is cached for 60 s.
 
 ## 3.10.1 (2026-11-07): Watson keeps his notes
