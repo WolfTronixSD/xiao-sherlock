@@ -2,6 +2,14 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.0 (2026-11-07): The LIS3DH
+- The Seismograph now also works with a **LIS3DH** board (I2C at 0x18 or 0x19; wire CS to 3V3 and SDO to GND). The camera uses whichever chip answers, so the MPU6050 still works. Any two free pins can be SDA and SCL.
+- The LIS3DH's three spare analog inputs (they read 0.9 to 1.8 V, so each needs a divider), each switched on in the Seismograph settings:
+  - **ADC1, light:** 3V3 - 10k - LDR - ADC1 - 10k - GND. The night watch then follows this light level instead of the picture's brightness.
+  - **ADC2, battery:** battery + - 200k - ADC2 - 100k - GND, with a divider ratio of 300. Shown wherever the battery is (heartbeat, LoRa alerts, The Scene).
+  - **ADC3, the car's 12 V:** fused 12 V - 91k - ADC3 - 10k - GND, plus 100 nF to GND. When armed, an alarm goes off when the voltage jumps as the engine starts. A warning (Telegram and LoRa) comes when the car battery stays low for a minute, at most once every 6 hours.
+- The Scene shows which chip was found and the spare inputs' voltages.
+
 ## 3.13.0 (2026-11-07): The seismograph
 - New sensor, the Seismograph: an MPU6050 (GY-521) on I2C, SDA D2 and SCL D3 by default. **Tilt** alarms when the resting angle changes by more than N degrees for over a second (a car jacked up for its wheels or catalytic converter, or towed). **Shock** alarms on a jolt above a limit in milli-g (smashed window, forced door, kick). The resting angle is taken when arming and with *Level now* on The Scene; very slow drift (heat, tyres cooling) is followed by itself. Live tilt and jolt on The Scene; its own actions like every sensor, and it counts as a witness for the Two witnesses rule (jolt + loud sound = strong break-in sign).
 

@@ -321,7 +321,7 @@ async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=aw
  $('recA').className='lamp'+(st.audioRec?' rec':'');$('recATxt').textContent=st.audioRec?'Watson is scribbling (recording audio)':"Watson's pencil is idle";
  $('recV').className='lamp'+(st.videoRec?' rec':'');$('recVTxt').textContent=st.videoRec?'The camera obscura whirrs (recording video)':'The camera obscura rests';
  $('inputs').innerHTML=st.inputs.filter(i=>i.en).map(i=>`<div><span class="lamp ${i.level==1?'hi':i.level==0?'lo':''}"></span>${esc(i.name)} <span class="small">${esc(i.pin)}: ${i.level==1?'HIGH':i.level==0?'LOW':'?'}</span></div>`).join('')||'<div class="small">None strung. See Instructions to Watson.</div>';
- $('shakeBox').innerHTML=st.shakeEn?`<div style="margin-top:8px"><b>The Seismograph</b> ${st.shakeOK==1?`tilt ${st.tilt.toFixed(1)}&deg; <span class="small">(alarm over ${st.tiltLim||'-'}&deg;)</span>, jolt ${st.shock.toFixed(2)} g <span class="small">(alarm over ${st.shockLim?(st.shockLim/1000).toFixed(2):'-'} g)</span> <button class="btn plain" onclick="levelNow()">Level now</button>`:'<span class="small">no MPU6050 found - check the wiring</span>'}</div>`:'';
+ $('shakeBox').innerHTML=st.shakeEn?`<div style="margin-top:8px"><b>The Seismograph</b> ${st.shakeOK==1?`<span class="small">(${st.shakeChip})</span> tilt ${st.tilt.toFixed(1)}&deg; <span class="small">(alarm over ${st.tiltLim||'-'}&deg;)</span>, jolt ${st.shock.toFixed(2)} g <span class="small">(alarm over ${st.shockLim?(st.shockLim/1000).toFixed(2):'-'} g)</span> <button class="btn plain" onclick="levelNow()">Level now</button>${st.shakeChip=='LIS3DH'?`<br><span class="small">spare inputs ${st.auxMv.map((v,i)=>'ADC'+(i+1)+' '+(v<0?'-':(v/1000).toFixed(2)+' V')).join(', ')}${st.ldr?' &middot; light from the LDR: '+st.light:''}${st.battMv>0?' &middot; battery '+(st.battMv/1000).toFixed(2)+' V':''}${st.carMv>0?' &middot; car '+(st.carMv/1000).toFixed(1)+' V':''}</span>`:''}`:'<span class="small">no LIS3DH or MPU6050 found - check the wiring</span>'}</div>`:'';
  $('sonarBox').innerHTML=st.sonarEn?`<div style="margin-top:8px"><b>The Bat Ears</b> ${st.sonarCm<0?'nothing in range':st.sonarCm+' cm'} <span class="small">(trigger under ${st.sonarLimit} cm)</span></div>`:'';
  $('warn').textContent=st.warn||'';
  const NM=['off','when dark','by the clock','always'];
@@ -628,6 +628,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.14.0','2026-11-07','The LIS3DH',["The Seismograph also works with a LIS3DH (found by itself, MPU6050 still works)","The LIS3DH's three spare inputs: an LDR for the night watch, the battery voltage, and the car's 12 V (alarm when the engine starts, warning when the battery runs low)"]],
  ['3.13.0','2026-11-07','The seismograph',["New sensor: MPU6050 tilt and shock, for the camp and against car break-ins (jacked up, towed, window smashed)","Live tilt and jolt on The Scene, with a Level now button"]],
 ['3.12.2','2026-11-07','A false alarm in the log',["The Telegram photo no longer reports 'could not save' when it did save"]],
 ['3.12.1','2026-11-07','Room to breathe',["Telegram's encryption now uses the big PSRAM, so the internal memory stops running out"]],

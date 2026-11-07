@@ -166,9 +166,10 @@ void buildFields() {
   add(g, "sonarCm", "Trigger when something is closer than (cm)", 'i', &cfg.sonarCm, 5, 400);
   addActions(g, "sonar", cfg.sonarAct);
 
-  g = "The Seismograph (MPU6050 tilt and shock)";
+  g = "The Seismograph (LIS3DH or MPU6050: tilt, shock, car)";
   add(g, "shakeEn", "Seismograph enabled", 'b', &cfg.shakeEn, 0, 0, nullptr,
-      "A GY-521 / MPU6050 board: VCC to 3V3, GND, SDA and SCL to the pins below. Screw or glue it firmly to the car body, tent pole or box: "
+      "A LIS3DH board (VCC to 3V3, GND, SDA and SCL to the pins below, CS to 3V3, SDO to GND) or a GY-521 / MPU6050 board (VCC, GND, SDA, SCL); "
+      "whichever answers is used. Any two free pins work. Screw or glue it firmly to the car body, tent pole or box: "
       "a loose board rattles. Tilt catches a car being jacked up (wheel or catalytic converter theft) or towed; shock catches a smashed window, a forced door or a kick. "
       "The resting angle is taken when you arm (and with Level now on The Scene); very slow changes (heat, tyres cooling) are followed by themselves.");
   add(g, "shakeSda", "SDA pin", 'p', &cfg.shakeSda);
@@ -178,6 +179,18 @@ void buildFields() {
   add(g, "shakeShockMg", "Alarm on a jolt stronger than (milli-g, 0 = off)", 'i', &cfg.shakeShockMg, 0, 4000, nullptr,
       "Car: 80 to 150 (lower = more sensitive). A slammed door nearby or a passing truck can reach 50. Watch the live value on The Scene while you knock. "
       "With Two witnesses on, a jolt plus a loud sound within the witness time is a strong break-in sign.");
+  add(g, "auxLight", "LIS3DH ADC1: LDR light level for the night watch", 'b', &cfg.auxLight, 0, 0, nullptr,
+      "The LIS3DH's spare inputs only read 0.9 to 1.8 V. LDR wiring: 3V3 - 10k - LDR - ADC1 - 10k - GND. Bright reads high, dark low. "
+      "When on, the night watch uses this instead of the picture's brightness (same 0-255 scale; tune the night thresholds while watching The Scene).");
+  add(g, "battLis", "LIS3DH ADC2: battery voltage", 'b', &cfg.battLis, 0, 0, nullptr,
+      "Battery + - 200k - ADC2 - 100k - GND (divides by 3: 3.0-4.2 V becomes 1.0-1.4 V), then set the divider ratio in Camp mode to 300. "
+      "Fine-tune that ratio against a multimeter. Replaces the battery pin.");
+  add(g, "carEn", "LIS3DH ADC3: the car's 12 V", 'b', &cfg.carEn, 0, 0, nullptr,
+      "Car 12 V (fused) - 91k - ADC3 - 10k - GND, plus a 100 nF capacitor from ADC3 to GND against spikes; the car's GND must join the camera's GND. "
+      "Alarms (Seismograph actions, only when armed) when the voltage jumps as the engine starts, and warns once every 6 hours when the battery runs low.");
+  add(g, "carMul", "Car divider ratio x100 (91k over 10k = 1010)", 'i', &cfg.carMul, 100, 3000, nullptr, "Fine-tune against a multimeter.");
+  add(g, "carOnMv", "Engine running above (mV)", 'i', &cfg.carOnMv, 12000, 15000, nullptr, "A charging alternator gives 13.6 to 14.6 V; a resting battery 12.4 to 12.8 V.");
+  add(g, "carLowMv", "Car battery low below (mV, 0 = never warn)", 'i', &cfg.carLowMv, 0, 13000);
   addActions(g, "shake", cfg.shakeAct);
 
   g = "The Baker Street Irregulars (phones and watches nearby)";
