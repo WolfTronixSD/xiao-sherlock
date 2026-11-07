@@ -5,6 +5,9 @@ The same history is shown in the web GUI under **The Workshop**.
 ## 3.12.0 (2026-11-07): Pictures by telegraph
 - Telegram `photo` also saves the picture to the SD card (`..._telegram-photo.jpg`).
 - New commands `audio [s]` (default 5 s, up to 30) and `video [s]` (default 5 s, up to 20). From Telegram the clip is saved to the card and sent to your chat as a file; over LoRa it is only saved.
+- More commands: `last` (photo of the latest alarm), `log [n]` (latest case log lines), `mute [1h]` / `unmute` (keep recording, no alerts), `arm 2h` (arm for a while, then disarm by itself), `disarm 30` (same as snooze). Durations take h or m (2h, 90m) or plain minutes.
+- Telegram shows tap buttons under each reply (Status, Photo, Last, Arm, Disarm, Mute 1h, Audio, Video, Log) and a / command menu.
+- Memory: ordinary memory requests of 2 KB or more now go to the 8 MB PSRAM, so the small internal RAM (Wi-Fi, camera, task stacks) no longer runs out during Telegram sends. Lowest free memory had reached 0 KB.
 
 ## 3.11.0 (2026-11-07): The librarian and the telegraph
 - Evidence Locker: with thousands of files the file list took 25 s and the browser gave up ("The locker is jammed: Failed to fetch"), and the statistics came back empty. A background librarian now walks the card and keeps the newest 600 files and the statistics ready, so the page answers at once. The walk hands the SD card back every 64 files, so recording carries on, and picking the newest files no longer rescans the whole list for each file. The timeline only reads the chosen day's folder.

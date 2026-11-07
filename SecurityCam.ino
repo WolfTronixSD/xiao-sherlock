@@ -6,6 +6,7 @@
 // to the SD card. Everything is configured from the web page.
 //
 // Board: XIAO_ESP32S3, PSRAM: OPI PSRAM, Partition: Default with spiffs (3MB APP)
+#include <esp_heap_caps.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <time.h>
@@ -121,6 +122,10 @@ static void startWifi() {
 }
 
 void setup() {
+  // The chip has ~300 KB of fast internal RAM but 8 MB of PSRAM. Wi-Fi, the camera and every task stack need the
+  // internal RAM, so send every ordinary memory request of 2 KB or more (encryption buffers for Telegram, JSON,
+  // long texts, file lists) to the PSRAM. Without this the internal RAM ran out completely during Telegram sends.
+  heap_caps_malloc_extmem_enable(2048);
   Serial.begin(115200);
   delay(800);
   Serial.println("\n=== 221B Baker Street security recorder " FW_VERSION " ===");

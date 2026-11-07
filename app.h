@@ -230,7 +230,13 @@ bool telegramReady();
 void telegramAlert(const String &text, bool withPhoto, bool force);
 String telegramFindChat();
 void telegramPhotoNow(const String &caption);
-void telegramSendFile(const String &path, const String &caption);  // a WAV or AVI from the card, sent as a file
+void telegramSendFile(const String &path, const String &caption);
+void telegramSendPhotoFile(const String &path, const String &caption);
+String cameraLastPhoto();
+String eventsText(int n);
+void muteFor(int minutes);
+int muteLeftMin();
+bool alertsMuted();  // a WAV or AVI from the card, sent as a file
 bool remoteCommand(String text, const String &who, void (*out)(const String &));
 
 // ---------- presence.cpp ----------

@@ -31,12 +31,20 @@ static String readResponse(NetworkClientSecure &c) {
   return body;
 }
 
-static bool sendMessage(const String &text, String &err) {
+// keyboard: show the tap buttons under the chat (replies to commands)
+static bool sendMessage(const String &text, String &err, bool keyboard = false) {
   NetworkClientSecure c;
   if (!connect(c)) { err = "cannot reach api.telegram.org"; return false; }
   JsonDocument d;
   d["chat_id"] = cfg.tgChat;
   d["text"] = text;
+  if (keyboard) {
+    static const char *rows[3][3] = {{"Status", "Photo", "Last"}, {"Arm", "Disarm", "Mute 1h"}, {"Audio", "Video", "Log"}};
+    JsonArray kb = d["reply_markup"]["keyboard"].to<JsonArray>();
+    for (auto &r : rows) { JsonArray row = kb.add<JsonArray>(); for (auto b : r) row.add(b); }
+    d["reply_markup"]["resize_keyboard"] = true;
+    d["reply_markup"]["is_persistent"] = true;
+  }
   String body;
   serializeJson(d, body);
   c.printf("POST /bot%s/sendMessage HTTP/1.1\r\nHost: api.telegram.org\r\nContent-Type: application/json\r\n"
@@ -112,7 +120,7 @@ static uint32_t lowHeapLog = 0, pollFailLog = 0;
 
 static void tgReply(const String &t) {
   String err;
-  if (!sendMessage("221B: " + t, err)) logEvent("error", "telegram", "reply failed: " + err);
+  if (!sendMessage("221B: " + t, err, true)) logEvent("error", "telegram", "reply failed: " + err);
 }
 
 static void handleUpdates(const String &body) {
@@ -137,7 +145,7 @@ static void handleUpdates(const String &body) {
     time_t now = time(nullptr), sent = (time_t)m["date"].as<int64_t>();
     if (timeValid() && sent > 0 && now - sent > 120) { logEvent("telegram", "Telegram", "skipped an old command: " + text.substring(0, 40)); continue; }
     if (who.length() > 20) who = who.substring(0, 20);
-    if (!remoteCommand(text, who, tgReply)) tgReply("I only know: arm, disarm, status, ring [s], quiet, snooze [min], photo, audio [s], video [s], sleep, help");
+    if (!remoteCommand(text, who, tgReply)) tgReply("I only know: status, arm [2h], disarm [30], mute [1h], unmute, photo, last, audio [s], video [s], log [n], ring [s], quiet, snooze [min], sleep, help");
   }
 }
 
@@ -162,6 +170,27 @@ static void pollOnce() {
   if (body.length()) handleUpdates(body);
 }
 
+// The "/" menu in Telegram: told once after each start
+static void setMenu() {
+  static bool done = false;
+  if (done) return;
+  NetworkClientSecure c;
+  if (!connect(c)) return;
+  JsonDocument d;
+  JsonArray a = d["commands"].to<JsonArray>();
+  static const char *cmds[][2] = {{"status", "armed or not, battery, SD"}, {"photo", "a picture now"}, {"last", "photo of the latest alarm"},
+    {"arm", "arm (arm 2h = for 2 hours)"}, {"disarm", "disarm (disarm 30 = for 30 min)"}, {"mute", "no alerts for 1 h (mute 3h)"},
+    {"unmute", "alerts back on"}, {"audio", "record sound (audio 10)"}, {"video", "record video (video 10)"}, {"log", "the latest case log lines"},
+    {"ring", "ring the alarm bell"}, {"quiet", "stop the bell"}, {"help", "all commands"}};
+  for (auto &cm : cmds) { JsonObject o = a.add<JsonObject>(); o["command"] = cm[0]; o["description"] = cm[1]; }
+  String body;
+  serializeJson(d, body);
+  c.printf("POST /bot%s/setMyCommands HTTP/1.1\r\nHost: api.telegram.org\r\nContent-Type: application/json\r\n"
+           "Content-Length: %u\r\nConnection: close\r\n\r\n", cfg.tgToken, body.length());
+  c.print(body);
+  done = readResponse(c).indexOf("\"ok\":true") >= 0;
+}
+
 static bool commandsOn() { return cfg.tgCmdEn && telegramReady() && WiFi.status() == WL_CONNECTED; }
 
 static void telegramTask(void *) {
@@ -181,6 +210,7 @@ static void telegramTask(void *) {
       delay(5000);
       continue;
     }
+    setMenu();
     pollOnce();
   }
 }
@@ -216,6 +246,16 @@ void telegramPhotoNow(const String &caption) {
     logEvent(f ? "saved" : "error", "telegram", String(f ? "photo " : "could not save ") + path.substring(path.lastIndexOf('/') + 1));
   }
   if (xQueueSend(q, &a, 0) != pdTRUE) delete a;
+}
+
+void telegramSendPhotoFile(const String &path, const String &caption) {
+  if (!telegramReady()) return;
+  Alert *a = new Alert{caption, {}, ""};
+  lockSD();
+  File f = openSD(path, FILE_READ);
+  if (f) { a->photo.resize(f.size()); f.read(a->photo.data(), a->photo.size()); f.close(); }
+  unlockSD();
+  if (a->photo.empty() || xQueueSend(q, &a, pdMS_TO_TICKS(1000)) != pdTRUE) delete a;
 }
 
 void telegramSendFile(const String &path, const String &caption) {

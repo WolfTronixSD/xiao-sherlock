@@ -74,6 +74,9 @@ static void applyNow() {
   s->set_special_effect(s, live.night && cfg.nightBW ? 2 : 0);  // 2 = grayscale
 }
 
+static char lastPhoto[96] = "";  // first photo of the latest burst, for the "last" command
+String cameraLastPhoto() { portENTER_CRITICAL(&reqMux); String s = lastPhoto; portEXIT_CRITICAL(&reqMux); return s; }
+
 void cameraRequestPhotos(const String &tag) {
   portENTER_CRITICAL(&reqMux);
   photosWanted = cfg.photoCount;
@@ -346,6 +349,7 @@ static void cameraTask(void *) {
       if (f) { f.write(fb->buf, fb->len); f.close(); }
       unlockSD();
       if (!ok) logEvent("error", "camera", "could not save photo");
+      if (ok && n == 1) { String p = photoBase + "_1.jpg"; portENTER_CRITICAL(&reqMux); strlcpy(lastPhoto, p.c_str(), sizeof(lastPhoto)); portEXIT_CRITICAL(&reqMux); }
       if (--photoIdx == 0) logEvent("saved", "camera", String(cfg.photoCount) + " photo(s) " + photoBase.substring(photoBase.lastIndexOf('/') + 1) + "_*.jpg");
       nextPhoto = now + cfg.photoIntervalMs;
     }
