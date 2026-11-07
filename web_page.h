@@ -20,7 +20,7 @@ h1{font-family:'IM Fell English SC',serif;font-weight:normal;margin:0;font-size:
 .dial{width:54px;height:54px;flex:none}.dial circle.face{fill:#fffaf0;stroke:#9c7840;stroke-width:3}.dial line{stroke:#2b1d0e;stroke-linecap:round}
 .wt{font-family:'IM Fell English SC',serif;font-size:28px;line-height:1;letter-spacing:1px;color:var(--ink)}.wt small{font-size:16px;color:var(--faded)}
 .wd{font-size:12px;color:var(--faded);font-style:italic}.wq{font-size:11px;color:var(--red)}
-.fw{display:inline-block;background:radial-gradient(circle at 35% 30%,#b53a3a,#6d1414);color:#f6e7c8;font-family:'IM Fell English SC',serif;font-size:12px;border-radius:50%;width:46px;height:46px;line-height:46px;text-align:center;box-shadow:0 2px 4px #0005,inset 0 0 0 3px #8e2424;transform:rotate(-12deg);flex:none}
+.fw{display:inline-block;background:radial-gradient(circle at 35% 30%,#b53a3a,#6d1414);color:#f6e7c8;font-family:'IM Fell English SC',serif;font-size:16px;font-weight:bold;border-radius:50%;width:62px;height:62px;line-height:62px;text-align:center;box-shadow:0 2px 4px #0005,inset 0 0 0 3px #8e2424;transform:rotate(-12deg);flex:none}
 .seal{margin-left:auto;border:0;cursor:pointer;border-radius:50px;padding:12px 20px;font-family:'IM Fell English SC',serif;font-size:17px;color:#fff;
  background:radial-gradient(circle at 35% 30%,#b23a3a,#6d1414);box-shadow:0 3px 6px rgba(0,0,0,.4),inset 0 -3px 6px rgba(0,0,0,.4)}
 .bars{display:inline-flex;gap:1px;align-items:flex-end;vertical-align:middle;margin-right:3px}.bars i{width:3px;background:#0002;border-radius:1px}.bars i.on{background:currentColor}
