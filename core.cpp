@@ -171,6 +171,13 @@ void setArmed(bool on, const String &who, const String &why) {
 static void janitorTask(void *) {
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(60000));
+    if (!live.sdOK) {  // the card can come back (reseated, or slow after a restart)
+      lockSD();
+      bool ok = mountSD();
+      if (ok) live.freeMB = (SD.totalBytes() - SD.usedBytes()) / 1048576;
+      unlockSD();
+      if (ok) logEvent("sd", "janitor", "SD card found again, " + String(live.freeMB) + " MB free");
+    }
     if (!cfg.autoClean || !live.sdOK || !timeValid()) continue;
     for (int i = 0; i < 30; i++) {  // at most 30 days per round
       lockSD();

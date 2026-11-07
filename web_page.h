@@ -146,7 +146,11 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
     <div class="small">Green: in good health. Amber: keep an eye on it. Red: send for Dr Watson.</div>
     <div class="row" id="campRow" style="display:none"><button class="btn plain" onclick="sleepNow()">&#128164; Send Holmes to sleep now</button></div></div>
    <div class="card"><h2>The Radar</h2><canvas id="radar" width="340" height="190"></canvas>
-    <div class="small" id="radarTxt"></div></div>
+    <div class="small" id="radarTxt"></div>
+    <div class="row" style="align-items:center;gap:8px;margin-top:6px"><label for="radarMm"><b>Trigger closer than</b></label>
+     <input type="range" id="radarMm" min="100" max="6000" step="100" style="flex:1;accent-color:var(--red)"
+      oninput="radarDrag=+this.value;$('radarMmTxt').textContent=(radarDrag/1000).toFixed(1)+' m';drawRadar()" onchange="radarSave()">
+     <span id="radarMmTxt" style="min-width:48px"></span></div></div>
   </div>
  </div>
 </section>
@@ -275,11 +279,15 @@ async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=aw
   if(m){m.style.width=Math.min(100,v)+'%';m.nextElementSibling.style.left=z.minPct+'%'}});
  if(tab=='shop')sys();
 }
-function drawRadar(){const c=$('radar'),g=c.getContext('2d'),W=c.width,H=c.height,R=H-12,cx=W/2,cy=H-6,max=6000;
+let radarDrag=null;
+async function radarSave(){const v=radarDrag;try{const r=await (await api('/api/radarmm?mm='+v,{method:'POST'})).text();st.radarMaxMm=cfg.radarMaxMm=+r;
+ const f=$('f_radarMaxMm');if(f)f.value=+r;toast('The radar now watches out to '+(r/1000).toFixed(1)+' m.')}catch(e){toast('Failed: '+e.message)}radarDrag=null}
+function drawRadar(){if(radarDrag==null&&st.radarMaxMm){$('radarMm').value=st.radarMaxMm;$('radarMmTxt').textContent=(st.radarMaxMm/1000).toFixed(1)+' m'}
+ const c=$('radar'),g=c.getContext('2d'),W=c.width,H=c.height,R=H-12,cx=W/2,cy=H-6,max=6000;
  g.clearRect(0,0,W,H);g.fillStyle='#16291e';g.beginPath();g.moveTo(cx,cy);g.arc(cx,cy,R,Math.PI*1.17,Math.PI*1.83);g.closePath();g.fill();
  g.strokeStyle='rgba(176,141,87,.6)';g.lineWidth=1;for(let d=1;d<=6;d++){g.beginPath();g.arc(cx,cy,R*d/6,Math.PI*1.17,Math.PI*1.83);g.stroke()}
  if(!st.radarEn){g.fillStyle='#d8c38f';g.font='14px serif';g.textAlign='center';g.fillText('Radar not enabled',cx,cy-R/2);$('radarTxt').textContent='Connect an HLK-LD2450 and enable it in the settings.';return}
- g.strokeStyle='#c62828';g.setLineDash([4,3]);g.beginPath();g.arc(cx,cy,R*Math.min(st.radarMaxMm,max)/max,Math.PI*1.17,Math.PI*1.83);g.stroke();g.setLineDash([]);
+ g.strokeStyle='#c62828';g.setLineDash([4,3]);g.beginPath();g.arc(cx,cy,R*Math.min(radarDrag??st.radarMaxMm,max)/max,Math.PI*1.17,Math.PI*1.83);g.stroke();g.setLineDash([]);
  (st.radar||[]).forEach((t,i)=>{const x=cx+t.x/max*R,y=cy-t.y/max*R;g.fillStyle='#f0c040';g.beginPath();g.arc(x,y,6,0,7);g.fill();g.fillStyle='#fff';g.font='11px serif';g.fillText('#'+(i+1),x+8,y)});
  $('radarTxt').textContent=st.radarSeen?(st.radar.length?st.radar.map((t,i)=>`#${i+1}: ${(t.x/1000).toFixed(1)} m across, ${(t.y/1000).toFixed(1)} m out, ${t.s} cm/s`).join(' | '):'The fog is empty.'):'No word from the radar - check wiring (TX/RX crossed?) and that it runs at 256000 baud.'}
 
@@ -509,6 +517,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.6','2026-11-07','The Problem of the Vanishing Card',['Radar trigger distance slider on The Scene, saved at once without restarting the radar', 'Fix: the piezo tone could take the camera clock (LEDC timer 0) and stop the pictures', 'The camera restarts itself if no pictures arrive, and a missing SD card is retried every minute', 'Restarts say which watchdog fired; a normal software restart is no longer shown in red']],
  ['3.5','2026-11-06','The Adventure of the Singing Piezo',['Alarm bell: new Piezo wail and Piezo beeps sounds, so a passive piezo really sounds instead of clicking','Tripwire debounce is now a setting (Baker Street HQ), and pins are read every 5 ms','The Scene refreshes its lamps twice a second']],
  ['3.4','2026-11-06','The Case of the Silent Bell',['Fix: the alarm bell on D1 did nothing, because the camp wake pin (also D1) was reset to an input even with camp mode off','Fix: a tripwire showed ? after saving settings until the pin changed','Warning when the camp wake pin is also the alarm bell or IR lamp pin']],
  ['3.3','2026-11-06','The Page That Would Not Starve',['The web page runs in its own task on the other processor core, so it stays quick while the camera records video and photos non-stop']],
