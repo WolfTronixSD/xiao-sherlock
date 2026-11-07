@@ -241,9 +241,10 @@ void telegramPhotoNow(const String &caption) {
     String path = evidencePath(stamp() + "_telegram-photo.jpg");
     lockSD();
     File f = openSD(path, FILE_WRITE);
-    if (f) { f.write(a->photo.data(), a->photo.size()); f.close(); }
+    bool ok = f;  // (after close() the File reads as false, so remember it here)
+    if (f) { ok = f.write(a->photo.data(), a->photo.size()) == a->photo.size(); f.close(); }
     unlockSD();
-    logEvent(f ? "saved" : "error", "telegram", String(f ? "photo " : "could not save ") + path.substring(path.lastIndexOf('/') + 1));
+    logEvent(ok ? "saved" : "error", "telegram", String(ok ? "photo " : "could not save ") + path.substring(path.lastIndexOf('/') + 1));
   }
   if (xQueueSend(q, &a, 0) != pdTRUE) delete a;
 }

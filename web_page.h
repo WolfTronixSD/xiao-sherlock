@@ -625,7 +625,8 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
- ['3.12.1','2026-11-07','Room to breathe',["Telegram's encryption now uses the big PSRAM, so the internal memory stops running out"]],
+ ['3.12.2','2026-11-07','A false alarm in the log',["The Telegram photo no longer reports 'could not save' when it did save"]],
+['3.12.1','2026-11-07','Room to breathe',["Telegram's encryption now uses the big PSRAM, so the internal memory stops running out"]],
 ['3.12.0','2026-11-07','Pictures by telegraph',["Telegram photo is saved to the card too","New commands: audio 10 and video 10 record a clip and send it to Telegram","Also last, log, mute 1h, arm 2h, and tap buttons in Telegram","Memory: big buffers moved to the PSRAM, so the internal memory no longer runs out"]],
 ['3.11.0','2026-11-07','The librarian and the telegraph',["The Evidence Locker opens at once, even with thousands of files: a librarian counts them in the background","Telegram commands: text your bot status, arm, disarm, snooze 30, photo... and it answers (only your own chat)","New file names with the weekday: 2026_11_06_091801_Fri__motion-Biscuit-tin.avi"]],
 ['3.10.2','2026-11-07','The locker door',["Fix: opening the Evidence Locker statistics with many files on the card kept restarting the board (the watchdog). The card walk now pauses regularly, and the statistics are kept for a minute","LoRa commands: just text status, arm, snooze 30... (no 221B needed), and the Command PIN is optional"]],
