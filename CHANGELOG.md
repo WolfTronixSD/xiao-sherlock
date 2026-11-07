@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.1 (2026-11-07): A room of its own
+- The Seismograph settings get their own tile instead of sitting under "More".
+
 ## 3.14.0 (2026-11-07): The LIS3DH
 - The Seismograph now also works with a **LIS3DH** board (I2C at 0x18 or 0x19; wire CS to 3V3 and SDO to GND). The camera uses whichever chip answers, so the MPU6050 still works. Any two free pins can be SDA and SCL.
 - The LIS3DH's three spare analog inputs (they read 0.9 to 1.8 V, so each needs a divider), each switched on in the Seismograph settings:
