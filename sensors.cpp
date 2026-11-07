@@ -40,7 +40,7 @@ static void setupPins() {
   live.radarSeen = false;
   for (auto &t : live.radar) t.valid = false;
   if (cfg.radarEn) {
-    if (claim(cfg.radarRx, "radar") && claim(cfg.radarTx, "radar")) {
+    if (claim(cfg.radarRx, "radar") && (cfg.radarTx < 0 || claim(cfg.radarTx, "radar"))) {  // TX is optional: we only listen
       radarSerial.begin(256000, SERIAL_8N1, cfg.radarRx, cfg.radarTx);
       radarActive = true;
     } else cfg.radarEn = false;
