@@ -12,6 +12,7 @@ static portMUX_TYPE bellMux = portMUX_INITIALIZER_UNLOCKED;
 static uint32_t bellUntil = 0;
 
 void sirenSound(int seconds, const String &why) {
+  if (!cfg.sirenEn) { logEvent("siren", "alarm bell", "switched off, not ringing: " + why); return; }
   portENTER_CRITICAL(&bellMux);
   bellUntil = millis() + seconds * 1000UL;
   bool was = live.siren;

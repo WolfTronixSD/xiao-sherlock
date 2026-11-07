@@ -50,7 +50,7 @@ static void addActions(const String &g, const String &k, Actions &a) {
 }
 
 static const char *PULL_OPTS = "0:No pull (external resistor)|1:Pull-up (switch to GND)|2:Pull-down (switch to 3V3)";
-static const char *EDGE_OPTS = "1:goes HIGH|0:goes LOW|2:changes either way";
+static const char *EDGE_OPTS = "1:goes HIGH|0:goes LOW|2:either way";
 
 void buildFields() {
   // defaults that depend on enums
@@ -167,9 +167,12 @@ void buildFields() {
       "Drive the IR LEDs through a transistor or MOSFET, never straight from the pin. The OV3660 sees IR only if the lens has no IR-cut filter.");
 
   g = "The Alarm Bell (siren, buzzer or LED)";
+  add(g, "sirenEn", "Alarm bell on", 'b', &cfg.sirenEn);
   add(g, "sirenPin", "Output pin", 'p', &cfg.sirenPin, 0, 0, nullptr,
       "A buzzer or LED can hang on the pin with a resistor; a real siren needs a transistor, MOSFET or relay module. Tick Ring the alarm bell under each sensor that should ring it.");
-  add(g, "sirenActiveLow", "Pin goes LOW to ring (many relay boards)", 'b', &cfg.sirenActiveLow);
+  add(g, "sirenActiveLow", "Rings when the pin is", 'b', &cfg.sirenActiveLow, 0, 0,
+      "0:Active HIGH|1:Active LOW",
+      "HIGH for an LED, buzzer or transistor; LOW for most relay modules. Also switchable on The Scene.");
   add(g, "sirenSec", "Ring for (s)", 'i', &cfg.sirenSec, 1, 300);
   add(g, "sirenStyle", "Sound", 'e', &cfg.sirenStyle, 0, 0, "0:Steady|1:Slow beep|2:Fast blink|3:Piezo wail (passive piezo)|4:Piezo beeps (passive piezo)");
 

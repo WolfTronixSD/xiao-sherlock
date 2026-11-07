@@ -2,6 +2,11 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.7 (2026-11-07): The Tidy Study
+- Cleaner settings: ON/OFF switches, HIGH/LOW buttons instead of drop-downs, and the five actions as one row of chips
+- Alarm bell: ON/OFF switch and Active HIGH / Active LOW buttons, also on The Scene (applied at once)
+- Sensors row on The Scene: switch each sensor on or off, or all at once (All back on restores the ones you had)
+
 ## 3.6.1 (2026-11-07)
 - Fix: a missing camera filled the case log with "camera restart failed" twice a second; it now retries every 30 s and logs rarely.
 

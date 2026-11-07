@@ -66,6 +66,8 @@ static void handleStatus() {
   d["nightMode"] = cfg.nightMode;
   d["irPin"] = cfg.irPin >= 0 ? pinName(cfg.irPin) : "";
   d["siren"] = live.siren;
+  d["sirenEn"] = cfg.sirenEn;
+  d["sirenLow"] = cfg.sirenActiveLow;
   d["sirenPin"] = cfg.sirenPin >= 0 ? pinName(cfg.sirenPin) : "";
   d["mqtt"] = live.mqtt;
   d["camp"] = cfg.campEn;
@@ -408,6 +410,13 @@ void webStart() {
   ROUTE("/api/settime", HTTP_POST, { handleSetTime(); });
   ROUTE("/api/mesh/test", HTTP_POST, { if (!cfg.meshEn || cfg.meshTx < 0) { server.send(400, "text/plain", "Enable the Pigeon Post and set the TX pin first, then save."); return; } meshSend("221B test: Inspector Lestrade checks the pigeons. All in order." + battText(), true); server.send(200, "text/plain", "Sent - look at your Meshtastic app"); });
   ROUTE("/api/siren", HTTP_POST, { if (server.arg("on") == "1") sirenSound(cfg.sirenSec, "rung from the web page"); else sirenStop("silenced from the web page"); server.send(200, "text/plain", live.siren ? "1" : "0"); });
+  ROUTE("/api/sirencfg", HTTP_POST, {  // quick bell switches on The Scene
+    if (server.hasArg("en")) cfg.sirenEn = server.arg("en") == "1";
+    if (server.hasArg("low")) cfg.sirenActiveLow = server.arg("low") == "1";
+    if (!cfg.sirenEn) sirenStop("bell switched off");
+    saveConfig();
+    server.send(200, "text/plain", "ok");
+  });
   ROUTE("/api/radarmm", HTTP_POST, {  // the trigger slider on The Scene: no pin restart, so the radar keeps tracking
     cfg.radarMaxMm = constrain(server.arg("mm").toInt(), 100, 6000);
     saveConfig();
