@@ -60,7 +60,9 @@ static void handleStatus() {
   d["reset"] = live.resetWhy;
   d["fw"] = FW_VERSION;
   d["phoneHome"] = live.phoneHome;
-  d["warn"] = live.pinWarning;
+  d["warn"] = live.pinWarning + (live.saveFailed ? String("Settings could not be saved to flash: they are lost at the next restart. ") : String("")) +
+              (live.wdtWho.length() ? "Last restart: the watchdog found " + live.wdtWho + " hung. " : String(""));
+  d["nvsFree"] = live.nvsFree;
   d["light"] = live.light;
   d["night"] = live.night;
   d["nightMode"] = cfg.nightMode;

@@ -327,16 +327,42 @@ String schemaJson() {
 
 static Preferences prefs;
 
+static SemaphoreHandle_t prefsLock = xSemaphoreCreateMutex();  // web, LoRa, timetable and MQTT can all save at once
+
+// Settings live in NVS as one blob ("cfgb"). Older firmware kept them as one string ("cfg"): a ~3 KB string needs
+// one NVS page with room for all of it, so once the pages were fragmented the save failed silently and the board
+// came back with old settings after the next restart. A blob is split across pages, and every save is checked.
 void loadConfig() {
+  xSemaphoreTake(prefsLock, portMAX_DELAY);
   prefs.begin("baker221b", true);
-  String s = prefs.getString("cfg", "");
+  String s;
+  size_t n = prefs.isKey("cfgb") ? prefs.getBytesLength("cfgb") : 0;
+  if (n) {
+    char *buf = (char *)malloc(n + 1);
+    if (buf) { prefs.getBytes("cfgb", buf, n); buf[n] = 0; s = buf; free(buf); }
+  }
+  if (!s.length()) s = prefs.getString("cfg", "");
+  live.nvsFree = prefs.freeEntries();
   prefs.end();
+  xSemaphoreGive(prefsLock);
   String err;
   if (s.length()) applyConfigJson(s, err);
 }
 
 void saveConfig() {
+  String s = configJson(false);
+  xSemaphoreTake(prefsLock, portMAX_DELAY);
   prefs.begin("baker221b", false);
-  prefs.putString("cfg", configJson(false));
+  bool ok = prefs.putBytes("cfgb", s.c_str(), s.length()) == s.length();
+  if (!ok) {  // no room for the new copy next to the old one: drop the old one and try once more
+    prefs.remove("cfgb");
+    ok = prefs.putBytes("cfgb", s.c_str(), s.length()) == s.length();
+  }
+  if (ok && prefs.isKey("cfg")) prefs.remove("cfg");  // the old string copy is no longer needed
+  live.nvsFree = prefs.freeEntries();
   prefs.end();
+  xSemaphoreGive(prefsLock);
+  live.saveFailed = !ok;
+  if (!ok) logEvent("warning", "settings", "could not save the settings to flash (" + String(s.length()) + " bytes, " +
+                    String(live.nvsFree) + " free entries): they are lost at the next restart");
 }

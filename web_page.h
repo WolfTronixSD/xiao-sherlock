@@ -20,7 +20,7 @@ h1{font-family:'IM Fell English SC',serif;font-weight:normal;margin:0;font-size:
 .dial{width:54px;height:54px;flex:none}.dial circle.face{fill:#fffaf0;stroke:#9c7840;stroke-width:3}.dial line{stroke:#2b1d0e;stroke-linecap:round}
 .wt{font-family:'IM Fell English SC',serif;font-size:28px;line-height:1;letter-spacing:1px;color:var(--ink)}.wt small{font-size:16px;color:var(--faded)}
 .wd{font-size:12px;color:var(--faded);font-style:italic}.wq{font-size:11px;color:var(--red)}
-.fw{display:inline-block;background:radial-gradient(circle at 35% 30%,#b53a3a,#6d1414);color:#f6e7c8;font-family:'IM Fell English SC',serif;font-size:12px;border-radius:50%;width:46px;height:46px;line-height:46px;text-align:center;box-shadow:0 2px 4px #0005,inset 0 0 0 3px #8e2424;transform:rotate(-12deg);flex:none}
+.fw{display:inline-block;background:radial-gradient(circle at 35% 30%,#b53a3a,#6d1414);color:#f6e7c8;font-family:'IM Fell English SC',serif;font-size:16px;font-weight:bold;border-radius:50%;width:62px;height:62px;line-height:62px;text-align:center;box-shadow:0 2px 4px #0005,inset 0 0 0 3px #8e2424;transform:rotate(-12deg);flex:none}
 .seal{margin-left:auto;border:0;cursor:pointer;border-radius:50px;padding:12px 20px;font-family:'IM Fell English SC',serif;font-size:17px;color:#fff;
  background:radial-gradient(circle at 35% 30%,#b23a3a,#6d1414);box-shadow:0 3px 6px rgba(0,0,0,.4),inset 0 -3px 6px rgba(0,0,0,.4)}
 .bars{display:inline-flex;gap:1px;align-items:flex-end;vertical-align:middle;margin-right:3px}.bars i{width:3px;background:#0002;border-radius:1px}.bars i.on{background:currentColor}
@@ -169,8 +169,7 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
     <div style="margin-top:8px"><span class="lamp" id="nightL"></span><b>The Night Watch</b> <span id="nightTxt"></span></div>
     <div><span class="lamp" id="bellL"></span><b>The Alarm Bell</b> <span id="bellTxt"></span>
      <button class="btn plain" id="bellBtn" onclick="bell()">Ring it</button>
-     <div class="row" style="align-items:center;gap:8px;margin-top:4px"><label class="sw" title="Alarm bell on or off"><input type="checkbox" id="bellEn" onchange="bellCfg('en',this.checked)"><span></span></label>
-      <span class="seg"><button type="button" id="bellHi" onclick="bellCfg('low',false)">Active HIGH</button><button type="button" id="bellLo" onclick="bellCfg('low',true)">Active LOW</button></span></div></div>
+     <div class="row" style="align-items:center;gap:8px;margin-top:4px"><label class="sw" title="Alarm bell on or off"><input type="checkbox" id="bellEn" onchange="bellCfg('en',this.checked)"><span></span></label><span class="small">Active HIGH / LOW is in Instructions to Watson, The Alarm Bell</span></div></div>
     <div id="warn" style="color:var(--red)"></div>
    </div>
    <div class="card"><h2>&#129658; The Doctor's Report</h2><table class="health" id="health"></table>
@@ -327,7 +326,7 @@ async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=aw
  $('nightL').className='lamp'+(st.night?' hi':'');$('nightTxt').innerHTML=(st.night?'on duty':'resting')+` <span class="small">(${NM[st.nightMode]||'?'}, light level ${st.light<0?'?':st.light}${st.irPin?', IR lamp on '+esc(st.irPin):''})</span>`;
  $('bellL').className='lamp'+(st.siren?' rec':'');$('bellTxt').innerHTML=(st.siren?'RINGING':'silent')+` <span class="small">${st.sirenPin?esc(st.sirenPin):'(no pin set)'}</span>`;
  $('bellBtn').textContent=st.siren?'Silence it':'Ring it';
- if(!bellBusy){$('bellEn').checked=!!st.sirenEn;$('bellHi').classList.toggle('on',!st.sirenLow);$('bellLo').classList.toggle('on',!!st.sirenLow);$('bellBtn').disabled=!st.sirenEn}
+ if(!bellBusy){$('bellEn').checked=!!st.sirenEn;$('bellBtn').disabled=!st.sirenEn}
  drawRadar();health();syncTime();
  if(st.motionEn===false)$('motionNote').textContent='Motion detection is off - switch it on under Instructions to Watson.';else $('motionNote').textContent='Whole picture changed: '+st.motionGlobal+'%';
  zones.forEach((z,i)=>{const c=$('zp'+i),m=$('zm'+i),v=st.motion[i]||0;if(c)c.textContent=v+'%';
@@ -338,7 +337,7 @@ let bellBusy=false;
 async function bellCfg(k,v){bellBusy=true;try{await api('/api/sirencfg?'+k+'='+(v?1:0),{method:'POST'});
  if(k=='en'){st.sirenEn=cfg.sirenEn=v;const e=$('f_sirenEn');if(e)e.checked=v}else{st.sirenLow=cfg.sirenActiveLow=v;const e=$('f_sirenActiveLow');if(e){e.checked=v;e.parentNode.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',(i==1)==v))}}
  toast(k=='en'?(v?'Alarm bell on.':'Alarm bell off.'):(v?'Bell rings when the pin goes LOW.':'Bell rings when the pin goes HIGH.'))}catch(e){toast('Failed: '+e.message)}
- bellBusy=false;$('bellEn').checked=!!st.sirenEn;$('bellHi').classList.toggle('on',!st.sirenLow);$('bellLo').classList.toggle('on',!!st.sirenLow);$('bellBtn').disabled=!st.sirenEn}
+ bellBusy=false;$('bellEn').checked=!!st.sirenEn;$('bellBtn').disabled=!st.sirenEn}
 // ---------- quick sensor switches (saved at once) ----------
 const SENS=[['soundEn','&#128066; Sound'],['motionEn','&#128065;&#65039; Motion'],['in1_en',1],['in2_en',2],['in3_en',3],['in4_en',4],['radarEn','&#128225; Radar'],['sonarEn','&#129415; Sonar'],['irrEn','&#129490; Irregulars']];
 function sensLabel(s){return typeof s[1]=='number'?'&#129700; '+esc(cfg['in'+s[1]+'_name']||('Input '+s[1])):s[1]}
@@ -620,6 +619,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.10.1','2026-11-07','Watson keeps his notes',["Fix: settings could silently fail to save, so after a restart the house came back with older settings (Pigeon Post off, disarmed). They are now stored in pieces, every save is checked, and a failed save shows a warning","After a watchdog restart the case log names the task that hung","Bigger version seal, the bell HIGH/LOW buttons only in Settings, and alarm log lines mention LoRa"]],
  ['3.10','2026-11-07','The pigeons fly both ways',["Two-way Pigeon Post: text 221B PIN arm, disarm, status, ring, quiet, snooze 30, photo, sleep or help from the Meshtastic app and the house answers over LoRa","Switched off until you turn on Two-way and set a PIN. Wrong PINs are logged, and five in a row lock commands out for 10 minutes"]],
  ['3.9.4','2026-11-07','Faces in the crowd',["The Irregulars colour each device: NEW (amber) for one that just arrived close by, red for close ones that count, green for ones you marked with These are mine, grey for far away. Signal bars, newest on top, and the count turns red at the alarm level"]],
  ['3.9.3','2026-11-07','In step',["The Armed switch in Settings now follows the header button, so saving settings after arming no longer disarms the house"]],
