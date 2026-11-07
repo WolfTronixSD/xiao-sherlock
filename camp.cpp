@@ -52,23 +52,28 @@ bool meshSend(const String &text, bool force) {
 // ---------- two-way: commands over LoRa ("status", or "PIN status" when a PIN is set) ----------
 // In TEXTMSG mode the radio prints every channel message it receives as one line, usually "Name: text".
 static uint32_t snoozeUntil = 0;   // when "snooze N" re-arms by itself (0 = no snooze)
+static bool snoozeTg = false;      // the snooze came from Telegram: say so there when it ends
 static uint8_t badPins = 0;
 static uint32_t lockedUntil = 0, lastBadLog = 0;
 
 static const char *CMDS[] = {"arm", "disarm", "status", "ring", "quiet", "snooze", "photo", "sleep", "help"};
 
 static void reply(const String &t) { meshSend("221B: " + t, true); }  // replies skip the one-text-a-minute limit
+static void loraReply(const String &t) { reply(t); }
 
-static void runCommand(const String &cmd, const String &arg, const String &who) {
-  String by = "LoRa" + (who.length() ? " (" + who + ")" : String(""));
-  logEvent("mesh", by, "command: " + cmd + (arg.length() ? " " + arg : ""));
-  if (cmd == "arm") { snoozeUntil = 0; setArmed(true, by, "command over LoRa"); reply("armed. The game is afoot."); }
-  else if (cmd == "disarm") { snoozeUntil = 0; setArmed(false, by, "command over LoRa"); reply("disarmed. Holmes is off duty."); }
+// Shared by LoRa and Telegram: "via" is "LoRa" or "Telegram", out() sends the answer back the same way
+static void runCommand(const String &cmd, const String &arg, const String &who, const char *via, void (*out)(const String &)) {
+  auto reply = out;
+  String by = String(via) + (who.length() ? " (" + who + ")" : String(""));
+  logEvent(strcmp(via, "LoRa") ? "telegram" : "mesh", by, "command: " + cmd + (arg.length() ? " " + arg : ""));
+  if (cmd == "arm") { snoozeUntil = 0; setArmed(true, by, String("command over ") + via); reply("armed. The game is afoot."); }
+  else if (cmd == "disarm") { snoozeUntil = 0; setArmed(false, by, String("command over ") + via); reply("disarmed. Holmes is off duty."); }
   else if (cmd == "snooze") {
     int m = arg.toInt();
     if (m < 1 || m > 720) m = 30;
-    setArmed(false, by, "snoozed over LoRa for " + String(m) + " min");
+    setArmed(false, by, String("snoozed over ") + via + " for " + String(m) + " min");
     snoozeUntil = millis() + m * 60000UL;
+    snoozeTg = strcmp(via, "Telegram") == 0;
     if (!snoozeUntil) snoozeUntil = 1;
     reply("disarmed for " + String(m) + " min, then armed again by itself.");
   } else if (cmd == "status") {
@@ -81,9 +86,12 @@ static void runCommand(const String &cmd, const String &arg, const String &who) 
     reply(t);
   } else if (cmd == "ring") {
     if (!cfg.sirenEn || cfg.sirenPin < 0) reply("the alarm bell is switched off or has no pin.");
-    else { int sec = arg.toInt(); if (sec < 1 || sec > 120) sec = cfg.sirenSec; reply("ringing the bell for " + String(sec) + " s."); sirenSound(sec, "rung over LoRa"); }
-  } else if (cmd == "quiet") { sirenStop("silenced over LoRa"); reply("bell silenced."); }
-  else if (cmd == "photo") { reply("taking photos to the SD card."); cameraRequestPhotos("lora"); }
+    else { int sec = arg.toInt(); if (sec < 1 || sec > 120) sec = cfg.sirenSec; reply("ringing the bell for " + String(sec) + " s."); sirenSound(sec, String("rung over ") + via); }
+  } else if (cmd == "quiet") { sirenStop(String("silenced over ") + via); reply("bell silenced."); }
+  else if (cmd == "photo") {
+    if (strcmp(via, "Telegram") == 0) { reply("snapping one for you."); telegramPhotoNow("221B: the scene at " + clockText()); }
+    else { reply("taking photos to the SD card."); cameraRequestPhotos("lora"); }
+  }
   else if (cmd == "sleep") {
     if (!cfg.campEn) reply("camp mode is off, so the house stays awake.");
     else { reply("going to sleep."); delay(1500); campSleepNow(); }
@@ -135,7 +143,25 @@ static void handleLine(String line) {
     return;
   }
   badPins = 0;
-  runCommand(cmd, arg, who);
+  runCommand(cmd, arg, who, "LoRa", loraReply);
+}
+
+// Telegram: "status", "/status", "snooze 30"... Returns false if the text is not a command.
+bool remoteCommand(String text, const String &who, void (*out)(const String &)) {
+  text.trim();
+  if (text.startsWith("/")) text = text.substring(1);
+  int at = text.indexOf('@');  // "/status@MyBot" in groups
+  int sp = text.indexOf(' ');
+  if (at > 0 && (sp < 0 || at < sp)) text = text.substring(0, at) + (sp > 0 ? text.substring(sp) : String(""));
+  text.trim();
+  sp = text.indexOf(' ');
+  String cmd = sp < 0 ? text : text.substring(0, sp), arg = sp < 0 ? String("") : text.substring(sp + 1);
+  cmd.toLowerCase();
+  arg.trim();
+  if (cmd == "start") cmd = "help";
+  if (!isCmd(cmd) || arg.indexOf(' ') >= 0 || (arg.length() && arg.toInt() <= 0)) return false;
+  runCommand(cmd, arg, who, "Telegram", out);
+  return true;
 }
 
 static void meshCmdTask(void *) {
@@ -144,7 +170,10 @@ static void meshCmdTask(void *) {
     delay(100);
     if (snoozeUntil && (int32_t)(millis() - snoozeUntil) >= 0) {
       snoozeUntil = 0;
-      if (!cfg.armed) { setArmed(true, "LoRa", "the snooze is over"); reply("snooze over, armed again."); }
+      if (!cfg.armed) {
+        setArmed(true, snoozeTg ? "Telegram" : "LoRa", "the snooze is over");
+        if (snoozeTg) telegramAlert("221B: snooze over, armed again.", false, true); else reply("snooze over, armed again.");
+      }
     }
     if (!meshActive || cfg.meshRx < 0) { buf = ""; continue; }
     String got;

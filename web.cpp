@@ -8,6 +8,7 @@
 #include "ff.h"
 #include <algorithm>
 #include <map>
+#include <functional>
 #include "web_page.h"
 
 static WebServer server(80);
@@ -154,11 +155,16 @@ static void handleCapture() {
 // fn(dayFolder or "", name, size) returns false to stop early.
 // Walks every file on the card. Thousands of files take seconds, so it pauses for a tick every 32 entries:
 // without that the web task hogs core 0, the idle task never runs and the task watchdog restarts the board.
-template <typename F> static void listSec(F fn) {
+// shareSD (the background librarian): every 64 entries the SD card is handed back for a moment, so recording carries on.
+template <typename F> static void listSec(F fn, bool shareSD = false) {
   static FF_DIR dir, sub;
   static FILINFO fi, sfi;
   uint32_t seen = 0;
-  auto breathe = [&]() { if ((++seen & 31) == 0) vTaskDelay(1); };
+  auto breathe = [&]() {
+    ++seen;
+    if (shareSD && (seen & 63) == 0) { unlockSD(); vTaskDelay(2); lockSD(); }
+    else if ((seen & 31) == 0) vTaskDelay(1);
+  };
   for (char drv = '0'; drv <= '1'; drv++) {
     char path[] = {drv, ':', '/', 's', 'e', 'c', 0};
     if (f_opendir(&dir, path) != FR_OK) continue;
@@ -180,29 +186,34 @@ template <typename F> static void listSec(F fn) {
   }
 }
 
-// The newest files (names start with the date, so the largest names are the newest):
-// 600 for the locker, or up to MAX_LIST of one day with ?day=YYYYMMDD (for the timeline)
+// Evidence of one day for the timeline (?day=YYYYMMDD): only that day's folder, plus old undated-folder files in /sec
 #define MAX_LIST 2000
 struct Entry { char name[64]; uint32_t size; };
 
-static void handleFiles() {
-  static Entry *list = (Entry *)ps_malloc(MAX_LIST * sizeof(Entry));
-  if (!list) { server.send(500, "text/plain", "No memory"); return; }
-  String day = server.arg("day");
-  int limit = day.length() == 8 ? MAX_LIST : 600;
-  int n = 0, oldest = 0, total = 0;
-  lockSD();
-  listSec([&](const char *, const char *name, uint32_t size) {
-    if (day.length() == 8 && strncmp(name, day.c_str(), 8)) return true;
-    total++;
-    if (n < limit) { strlcpy(list[n].name, name, sizeof(list[n].name)); list[n++].size = size; }
-    else if (strcmp(name, list[oldest].name) > 0) { strlcpy(list[oldest].name, name, sizeof(list[oldest].name)); list[oldest].size = size; }
-    else return true;
-    if (n == limit)
-      for (int i = 0; i < n; i++) if (strcmp(list[i].name, list[oldest].name) < 0) oldest = i;
-    return true;
-  });
-  unlockSD();
+static void listDay(const String &day, std::function<void(const char *, uint32_t)> fn) {
+  static FF_DIR dir;
+  static FILINFO fi;
+  uint32_t seen = 0;
+  for (char drv = '0'; drv <= '1'; drv++) {
+    String root = String(drv) + ":/sec";
+    if (f_opendir(&dir, root.c_str()) != FR_OK) continue;
+    while (f_readdir(&dir, &fi) == FR_OK && fi.fname[0]) {
+      if ((++seen & 31) == 0) vTaskDelay(1);
+      if (!(fi.fattrib & AM_DIR) && !strncmp(fi.fname, day.c_str(), 8)) fn(fi.fname, (uint32_t)fi.fsize);
+    }
+    f_closedir(&dir);
+    if (f_opendir(&dir, (root + "/" + day).c_str()) == FR_OK) {
+      while (f_readdir(&dir, &fi) == FR_OK && fi.fname[0]) {
+        if ((++seen & 31) == 0) vTaskDelay(1);
+        if (!(fi.fattrib & AM_DIR)) fn(fi.fname, (uint32_t)fi.fsize);
+      }
+      f_closedir(&dir);
+    }
+    return;
+  }
+}
+
+static void sendEntries(Entry *list, int n, int total) {
   String s;
   s.reserve(n * 40 + 16);
   s = "[";
@@ -215,15 +226,30 @@ static void handleFiles() {
   sendJson(s);
 }
 
-// /api/stats: per day the number of photos, videos and recordings, their size, clues per hour
-// and per sensor. Worked out from the file names (YYYYMMDD_HHMMSS_source-name...), so it is quick.
+// ---------- the librarian ----------
+// Walking thousands of files takes many seconds, far too long to keep a web request (and the browser) waiting.
+// A background task walks the card and keeps two ready answers: the newest 600 files for the locker and the
+// statistics. The page gets them at once; a walk only runs when someone looks and the answer is over a minute old.
+#define LOCKER_MAX 600
 struct DayStat { uint16_t jpg = 0, avi = 0, wav = 0, other = 0; uint64_t bytes = 0; uint16_t hours[24] = {}; std::map<String, uint16_t> src; };
 
-static void handleStats() {
-  // the answer is kept for a minute: the page asks again on every visit and the card walk is slow
-  static String cached;
-  static uint32_t cachedAt = 0;
-  if (cached.length() && millis() - cachedAt < 60000UL) { sendJson(cached); return; }
+static SemaphoreHandle_t libLock = xSemaphoreCreateMutex();
+static String libFiles, libStats;  // ready JSON answers ("" = not counted yet)
+static int libTotal = 0;
+static uint32_t libBuiltAt = 0;
+static volatile bool libWanted = true;  // count once after start
+
+static void libAsk(bool now = false) {
+  if (now || !libBuiltAt || millis() - libBuiltAt > 60000UL) libWanted = true;
+}
+
+static void libBuild() {
+  static Entry *list = (Entry *)ps_malloc(LOCKER_MAX * sizeof(Entry));
+  if (!list) return;
+  // min-heap of indexes into list: the oldest of the newest 600 sits on top
+  std::vector<uint16_t> heap;
+  heap.reserve(LOCKER_MAX);
+  auto newer = [&](uint16_t a, uint16_t b) { return strcmp(list[a].name, list[b].name) > 0; };
   std::map<String, DayStat> days;
   uint32_t total = 0;
   uint64_t bytes = 0;
@@ -231,6 +257,16 @@ static void handleStats() {
   listSec([&](const char *, const char *name, uint32_t size) {
     total++;
     bytes += size;
+    if (heap.size() < LOCKER_MAX) {
+      uint16_t i = heap.size();
+      strlcpy(list[i].name, name, sizeof(list[i].name)); list[i].size = size;
+      heap.push_back(i); std::push_heap(heap.begin(), heap.end(), newer);
+    } else if (strcmp(name, list[heap.front()].name) > 0) {
+      std::pop_heap(heap.begin(), heap.end(), newer);
+      uint16_t i = heap.back();
+      strlcpy(list[i].name, name, sizeof(list[i].name)); list[i].size = size;
+      std::push_heap(heap.begin(), heap.end(), newer);
+    }
     size_t len = strlen(name);
     if (len < 17 || name[8] != '_' || name[15] != '_') return true;  // the case log and other odd names
     for (int i : {0, 1, 2, 3, 4, 5, 6, 7, 9, 10}) if (!isdigit((unsigned char)name[i])) return true;
@@ -246,8 +282,18 @@ static void handleStats() {
     const char *tag = name + 16, *end = strpbrk(tag, "-_.");
     d.src[String(tag).substring(0, end ? end - tag : strlen(tag))]++;
     return true;
-  });
+  }, true);
   unlockSD();
+
+  String f;
+  f.reserve(heap.size() * 40 + 16);
+  f = "[";
+  for (size_t k = 0; k < heap.size(); k++) {
+    if (k) f += ',';
+    f += "[\""; f += list[heap[k]].name; f += "\","; f += list[heap[k]].size; f += ']';
+  }
+  f += "]";
+
   JsonDocument doc;
   doc["total"] = total;
   doc["mb"] = (uint32_t)(bytes / 1048576);
@@ -260,15 +306,60 @@ static void handleStats() {
     o["mb"] = (float)(d.bytes / 1048576.0);
     JsonArray h = o["h"].to<JsonArray>();
     for (int i = 0; i < 24; i++) h.add(d.hours[i]);
-    JsonObject s = o["s"].to<JsonObject>();
-    for (auto &x : d.src) s[x.first] = x.second;
+    JsonObject so = o["s"].to<JsonObject>();
+    for (auto &x : d.src) so[x.first] = x.second;
   }
-  String s;
-  serializeJson(doc, s);
-  cached = s;
-  cachedAt = millis();
+  String st;
+  serializeJson(doc, st);
+
+  xSemaphoreTake(libLock, portMAX_DELAY);
+  libFiles = f; libStats = st; libTotal = total; libBuiltAt = millis();
+  xSemaphoreGive(libLock);
+}
+
+static void libTask(void *) {
+  for (;;) {
+    delay(300);
+    if (!libWanted || !live.sdOK) continue;
+    libWanted = false;
+    libBuild();
+  }
+}
+
+static void sendReady(const String &which, bool files) {
+  xSemaphoreTake(libLock, portMAX_DELAY);
+  String s = which;
+  int total = libTotal;
+  xSemaphoreGive(libLock);
+  if (!s.length()) {
+    libAsk(true);
+    server.sendHeader("Retry-After", "2");
+    server.send(503, "text/plain", "Watson is still counting the evidence");
+    return;
+  }
+  libAsk();
+  if (files) server.sendHeader("X-Total-Files", String(total));
   sendJson(s);
 }
+
+// /api/files: the newest 600 files for the locker, or ?day=YYYYMMDD: up to MAX_LIST of that day (for the timeline)
+static void handleFiles() {
+  String day = server.arg("day");
+  if (day.length() != 8) { sendReady(libFiles, true); return; }
+  static Entry *list = (Entry *)ps_malloc(MAX_LIST * sizeof(Entry));
+  if (!list) { server.send(500, "text/plain", "No memory"); return; }
+  int n = 0, total = 0;
+  lockSD();
+  listDay(day, [&](const char *name, uint32_t size) {
+    total++;
+    if (n < MAX_LIST) { strlcpy(list[n].name, name, sizeof(list[n].name)); list[n++].size = size; }
+  });
+  unlockSD();
+  sendEntries(list, n, total);
+}
+
+// /api/stats: per day the number of photos, videos and recordings, their size, clues per hour and per sensor
+static void handleStats() { sendReady(libStats, false); }
 
 static bool safeName(const String &n) { return n.length() && n.length() < 64 && n.indexOf('/') < 0 && n.indexOf("..") < 0; }
 
@@ -328,7 +419,20 @@ static void handleDelete() {
   lockSD();
   bool ok = SD.remove(findEvidence(n));
   unlockSD();
-  if (ok) logEvent("deleted", "web", n);
+  if (ok) {
+    logEvent("deleted", "web", n);
+    xSemaphoreTake(libLock, portMAX_DELAY);
+    int at = libFiles.indexOf("[\"" + n + "\",");
+    if (at >= 0) {
+      int end = libFiles.indexOf(']', at) + 1;
+      if (end < (int)libFiles.length() && libFiles[end] == ',') end++;
+      else if (at > 1 && libFiles[at - 1] == ',') at--;
+      libFiles.remove(at, end - at);
+      libTotal--;
+    }
+    xSemaphoreGive(libLock);
+    libAsk(true);
+  }
   server.send(ok ? 200 : 404, "text/plain", ok ? "Destroyed the evidence" : "No such clue");
 }
 
@@ -388,6 +492,10 @@ static void handleDeleteBulk() {
   if (!all && (day.length() != 8 || day.toInt() < 20000101)) { server.send(400, "text/plain", "Bad day"); return; }
   int n = deleteDay(day, server.arg("keeplog") != "0");
   logEvent("deleted", "web", String(n) + " file(s) " + (all ? "- everything" : "from " + day));
+  xSemaphoreTake(libLock, portMAX_DELAY);
+  libFiles = ""; libStats = "";  // the page waits for a fresh count
+  xSemaphoreGive(libLock);
+  libAsk(true);
   server.send(200, "text/plain", String(n));
 }
 
@@ -465,6 +573,7 @@ void webStart() {
   webAlive();
   xTaskCreatePinnedToCore(webWatchdog, "webdog", 4096, nullptr, 1, nullptr, 0);
   xTaskCreatePinnedToCore(webTask, "web", 12288, nullptr, 2, nullptr, 0);
+  xTaskCreatePinnedToCore(libTask, "librarian", 6144, nullptr, 1, nullptr, 0);
 }
 
 // The web page runs in its own task on core 0. In the Arduino loop() (core 1, lowest priority) it starved

@@ -2,6 +2,10 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.11.0 (2026-11-07): The librarian and the telegraph
+- Evidence Locker: with thousands of files the file list took 25 s and the browser gave up ("The locker is jammed: Failed to fetch"), and the statistics came back empty. A background librarian now walks the card and keeps the newest 600 files and the statistics ready, so the page answers at once. The walk hands the SD card back every 64 files, so recording carries on, and picking the newest files no longer rescans the whole list for each file. The timeline only reads the chosen day's folder.
+- Telegram commands: switch on *Two-way: accept commands from your chat* in The Telegram Boy and send the bot status, arm, disarm, ring, quiet, snooze 30, photo, sleep or help (with or without /). Only your own chat ID is obeyed. Photo sends a picture back. Commands older than 2 minutes (sent while the camera was off) are skipped. Listening pauses when memory is low.
+
 ## 3.10.2 (2026-11-07): The locker door
 - LoRa commands: just send `status`, `arm`, `snooze 30`... as the whole message, no "221B" in front needed (it still works). The Command PIN is now optional: leave it empty to accept commands without one. Ring and photo confirm before they start, and a missing PIN gets a hint back.
 - Fix: the Evidence Locker statistics (and the file list) walked thousands of SD files in one go inside the web task, starving core 0's idle task, so the task watchdog restarted the board in a loop. The walk now yields every 32 entries, and the statistics answer is cached for 60 s.

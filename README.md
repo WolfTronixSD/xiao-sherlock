@@ -95,6 +95,8 @@ In the Meshtastic app on the radio: *Module config > Serial*: enabled, mode **TE
 
 **Two-way (commands from your phone):** wire the radio's TX pin to the ESP RX pin too (e.g. Heltec GPIO 48 → XIAO D5), switch on *Two-way: accept commands over LoRa* in The Pigeon Post. Then text just `status` (or arm, disarm, ring, quiet, snooze 30, photo, sleep, help) on the channel and the camera answers right away. The Command PIN is optional: if you set one, write it first (`1234 status`). The old `221B <PIN> status` form still works. Put both radios on a private channel with your own key.
 
+**Telegram commands:** switch on *Two-way: accept commands from your chat* in The Telegram Boy, then send your bot the same words (`status`, `/arm`, `snooze 30`, `photo`...). Only your own chat ID is obeyed; `photo` sends a picture back.
+
 **PIR:** output to D1 (the default tripwire 2 "PIR" and the default wake pin). Only D0-D5 can wake the chip.
 
 **Battery voltage (optional):** two equal resistors (e.g. 2 x 100k) from battery + to GND, middle to a free pin (e.g. D0); set *Battery voltage pin* and leave the ratio at 200.

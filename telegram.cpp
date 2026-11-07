@@ -65,14 +65,84 @@ static bool sendPhoto(const String &caption, const std::vector<uint8_t> &jpg, St
   return true;
 }
 
+// ---------- commands from your chat ("status", "/arm", "snooze 30"...) ----------
+// Long polling: one getUpdates request waits up to 25 s for a new message, so commands arrive at once.
+// Only one TLS connection is open at a time: a waiting alert cuts the poll short and goes first.
+static int64_t lastUpdate = 0;   // highest update_id handled
+static uint32_t lowHeapLog = 0, pollFailLog = 0;
+
+static void tgReply(const String &t) {
+  String err;
+  if (!sendMessage("221B: " + t, err)) logEvent("error", "telegram", "reply failed: " + err);
+}
+
+static void handleUpdates(const String &body) {
+  JsonDocument filter;
+  filter["ok"] = true;
+  filter["result"][0]["update_id"] = true;
+  filter["result"][0]["message"]["chat"]["id"] = true;
+  filter["result"][0]["message"]["from"]["first_name"] = true;
+  filter["result"][0]["message"]["date"] = true;
+  filter["result"][0]["message"]["text"] = true;
+  JsonDocument d;
+  if (deserializeJson(d, body, DeserializationOption::Filter(filter)) || !d["ok"]) return;
+  for (JsonVariant u : d["result"].as<JsonArray>()) {
+    int64_t id = u["update_id"].as<int64_t>();
+    if (id <= lastUpdate) continue;
+    lastUpdate = id;
+    JsonVariant m = u["message"];
+    if (m.isNull()) continue;
+    String chat = m["chat"]["id"].as<String>(), text = m["text"].as<String>(), who = m["from"]["first_name"].as<String>();
+    if (chat != cfg.tgChat) { logEvent("telegram", "Telegram", "ignored a message from another chat (" + chat + ")"); continue; }
+    // after a restart, Telegram hands over what was sent while the camera was off: skip anything older than 2 minutes
+    time_t now = time(nullptr), sent = (time_t)m["date"].as<int64_t>();
+    if (timeValid() && sent > 0 && now - sent > 120) { logEvent("telegram", "Telegram", "skipped an old command: " + text.substring(0, 40)); continue; }
+    if (who.length() > 20) who = who.substring(0, 20);
+    if (!remoteCommand(text, who, tgReply)) tgReply("I only know: arm, disarm, status, ring [s], quiet, snooze [min], photo, sleep, help");
+  }
+}
+
+// One long poll. Returns early (and drops the connection) as soon as an alert is waiting in the queue.
+static void pollOnce() {
+  NetworkClientSecure c;
+  if (!connect(c)) { if (millis() - pollFailLog > 600000UL) { pollFailLog = millis(); logEvent("error", "telegram", "cannot reach api.telegram.org for commands"); } delay(5000); return; }
+  c.printf("GET /bot%s/getUpdates?offset=%lld&limit=5&timeout=25&allowed_updates=%%5B%%22message%%22%%5D HTTP/1.1\r\n"
+           "Host: api.telegram.org\r\nConnection: close\r\n\r\n", cfg.tgToken, (long long)(lastUpdate + 1));
+  uint32_t start = millis();
+  String body, line;
+  bool inBody = false;
+  while ((c.connected() || c.available()) && millis() - start < 35000) {
+    if (uxQueueMessagesWaiting(q)) { c.stop(); return; }  // an alert goes first; the same messages come again next poll
+    if (!c.available()) { delay(20); continue; }
+    char ch = c.read();
+    if (inBody) { if (body.length() < 8192) body += ch; continue; }
+    if (ch == '\n') { if (line == "\r" || line.isEmpty()) inBody = true; line = ""; }
+    else line += ch;
+  }
+  c.stop();
+  if (body.length()) handleUpdates(body);
+}
+
+static bool commandsOn() { return cfg.tgCmdEn && telegramReady() && WiFi.status() == WL_CONNECTED; }
+
 static void telegramTask(void *) {
   Alert *a;
   for (;;) {
-    if (xQueueReceive(q, &a, portMAX_DELAY) != pdTRUE) continue;
-    String err;
-    bool ok = a->photo.size() ? sendPhoto(a->text, a->photo, err) : sendMessage(a->text, err);
-    if (!ok) logEvent("error", "telegram", err);
-    delete a;
+    if (xQueueReceive(q, &a, commandsOn() ? 0 : pdMS_TO_TICKS(5000)) == pdTRUE) {
+      String err;
+      bool ok = a->photo.size() ? sendPhoto(a->text, a->photo, err) : sendMessage(a->text, err);
+      if (!ok) logEvent("error", "telegram", err);
+      delete a;
+      continue;
+    }
+    if (!commandsOn()) continue;
+    // a TLS connection needs about 40 KB: leave the camera and recording enough room
+    if (heap_caps_get_free_size(MALLOC_CAP_INTERNAL) < 50000) {
+      if (millis() - lowHeapLog > 600000UL) { lowHeapLog = millis(); logEvent("warn", "telegram", "memory is low, not listening for commands right now"); }
+      delay(5000);
+      continue;
+    }
+    pollOnce();
   }
 }
 
@@ -89,6 +159,14 @@ void telegramAlert(const String &text, bool withPhoto, bool force) {
   lastSent = now;
   Alert *a = new Alert{text, {}};
   if (withPhoto && cfg.tgPhoto) cameraSnapshot(a->photo);
+  if (xQueueSend(q, &a, 0) != pdTRUE) delete a;
+}
+
+// The "photo" command from your chat: always with a photo, ignoring the gap
+void telegramPhotoNow(const String &caption) {
+  if (!telegramReady()) return;
+  Alert *a = new Alert{caption, {}};
+  cameraSnapshot(a->photo);
   if (xQueueSend(q, &a, 0) != pdTRUE) delete a;
 }
 

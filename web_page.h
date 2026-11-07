@@ -441,7 +441,10 @@ async function loadLog(){let ev=[];try{ev=await (await api('/api/events')).json(
 
 // ---------- evidence locker ----------
 let files=[],totalFiles=0;
-async function loadFiles(){try{const r=await api('/api/files');totalFiles=+r.headers.get('X-Total-Files')||0;files=await r.json()}catch(e){toast('The locker is jammed: '+e.message);return}files.sort((a,b)=>a[0]<b[0]?1:-1);
+let lockerTries=0;
+async function loadFiles(){try{const r=await fetch('/api/files');
+  if(r.status==503){if(lockerTries++==0)toast('Watson is counting the evidence. One moment.');if(lockerTries<40)setTimeout(loadFiles,2000);return}
+  if(!r.ok)throw new Error(await r.text());lockerTries=0;totalFiles=+r.headers.get('X-Total-Files')||0;files=await r.json()}catch(e){lockerTries=0;toast('The locker is jammed: '+e.message);return}files.sort((a,b)=>a[0]<b[0]?1:-1);
  const days={};files.forEach(f=>{const m=f[0].match(/^(\d{8})_/);if(m)days[m[1]]=(days[m[1]]||0)+1});
  $('fday').innerHTML=Object.keys(days).sort().reverse().map(d=>`<option value="${d}">${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6)} (${days[d]} items)</option>`).join('')||'<option value="">no dated evidence</option>';
  renderFiles()}
@@ -475,7 +478,8 @@ $('micMeter').addEventListener('pointercancel',()=>thrDrag=null);
 let stats=null,tFiles=[],tDayShown='',tMarks=[];
 const COL={jpg:'#a8792a',avi:'#8e2a2a',wav:'#5c3b7a'},TYPES=['jpg','avi','wav'];
 const dayTxt=d=>d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6);
-async function loadStats(){try{stats=await (await api('/api/stats')).json()}catch(e){return}
+let statsTries=0;
+async function loadStats(){try{const r=await fetch('/api/stats');if(r.status==503){if(statsTries++<40)setTimeout(loadStats,2000);return}if(!r.ok)return;statsTries=0;stats=await r.json()}catch(e){return}
  const ds=stats.days.map(x=>x.d).reverse(),opt=ds.map(d=>`<option value="${d}">${dayTxt(d)}</option>`).join('');
  const keep=$('hDay').value;$('hDay').innerHTML='<option value="">all days</option>'+opt;$('hDay').value=keep;
  const tk=$('tDay').value;$('tDay').innerHTML=opt||'<option value="">no dated evidence</option>';if(tk&&ds.includes(tk))$('tDay').value=tk;
@@ -619,7 +623,8 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
- ['3.10.2','2026-11-07','The locker door',["Fix: opening the Evidence Locker statistics with many files on the card kept restarting the board (the watchdog). The card walk now pauses regularly, and the statistics are kept for a minute","LoRa commands: just text status, arm, snooze 30... (no 221B needed), and the Command PIN is optional"]],
+ ['3.11.0','2026-11-07','The librarian and the telegraph',["The Evidence Locker opens at once, even with thousands of files: a librarian counts them in the background","Telegram commands: text your bot status, arm, disarm, snooze 30, photo... and it answers (only your own chat)"]],
+['3.10.2','2026-11-07','The locker door',["Fix: opening the Evidence Locker statistics with many files on the card kept restarting the board (the watchdog). The card walk now pauses regularly, and the statistics are kept for a minute","LoRa commands: just text status, arm, snooze 30... (no 221B needed), and the Command PIN is optional"]],
  ['3.10.1','2026-11-07','Watson keeps his notes',["Fix: settings could silently fail to save, so after a restart the house came back with older settings (Pigeon Post off, disarmed). They are now stored in pieces, every save is checked, and a failed save shows a warning","After a watchdog restart the case log names the task that hung","Bigger version seal, the bell HIGH/LOW buttons only in Settings, and alarm log lines mention LoRa"]],
  ['3.10','2026-11-07','The pigeons fly both ways',["Two-way Pigeon Post: text 221B PIN arm, disarm, status, ring, quiet, snooze 30, photo, sleep or help from the Meshtastic app and the house answers over LoRa","Switched off until you turn on Two-way and set a PIN. Wrong PINs are logged, and five in a row lock commands out for 10 minutes"]],
  ['3.9.4','2026-11-07','Faces in the crowd',["The Irregulars colour each device: NEW (amber) for one that just arrived close by, red for close ones that count, green for ones you marked with These are mine, grey for far away. Signal bars, newest on top, and the count turns red at the alarm level"]],
