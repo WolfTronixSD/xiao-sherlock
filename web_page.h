@@ -161,7 +161,7 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
     <div class="small">Green: in good health. Amber: keep an eye on it. Red: send for Dr Watson.</div>
     <div class="row" id="campRow" style="display:none"><button class="btn plain" onclick="sleepNow()">&#128164; Send Holmes to sleep now</button></div></div>
    <div class="card" id="irrCard" style="display:none"><h2>&#129490; The Irregulars</h2>
-    <div><b id="irrNow" style="font-size:22px">?</b> phones and watches nearby <span class="small" id="irrBase"></span></div>
+    <div><b id="irrNow" style="font-size:22px">?</b> phones nearby <span class="small" id="irrBase"></span></div>
     <div class="small" id="irrTxt"></div>
     <table class="health" id="irrList" style="margin-top:6px"></table>
     <div class="row"><button class="btn plain" onclick="irrMine()">These are mine</button><span class="small">sets the normal count to what is around now</span></div></div>
@@ -326,7 +326,7 @@ let irrBusy=false,irrLast=0;
 async function irrPoll(){if(irrBusy||Date.now()-irrLast<2000)return;irrBusy=true;irrLast=Date.now();
  try{const j=await (await api('/api/irregulars')).json();$('irrNow').textContent=j.now;
   $('irrBase').textContent=`(normal ${j.base}, alarm at ${j.base+j.extra}, counting stronger than ${j.rssi} dBm)`;
-  $('irrTxt').textContent=(j.ble?'Bluetooth: listening':'Bluetooth: off')+' \u00b7 '+(j.wifi?'Wi-Fi: listening':'Wi-Fi: off (needs Wi-Fi on)')+' \u00b7 free memory '+Math.round(j.heap/1024)+' KB';
+  $('irrTxt').textContent=(j.wifi?'Listening for phones on Wi-Fi':'Not listening: needs Wi-Fi or the hotspot on')+' \u00b7 free memory '+Math.round(j.heap/1024)+' KB';
   $('irrList').innerHTML=j.list.map(d=>`<tr><td>${d.k}</td><td>#${esc(d.id)}</td><td>${d.r} dBm</td><td>${d.ago?d.ago+' s ago':'now'}</td><td class="small">${d.for>=60?Math.round(d.for/60)+' min':d.for+' s'} seen</td></tr>`).join('')||'<tr><td class="small">Nobody about. The street is empty.</td></tr>'}
  catch(e){}irrBusy=false}
 async function irrMine(){try{const r=await (await api('/api/irrmine',{method:'POST'})).text();cfg.irrBaseline=+r;const f=$('f_irrBaseline');if(f)f.value=+r;toast('Normal count set to '+r+'.');irrLast=0;irrPoll()}catch(e){toast('Failed: '+e.message)}}
@@ -512,7 +512,7 @@ function jumpTo(i){const f=$('sec'+i);f.querySelector('details').open=true;f.scr
 function openAll(o){document.querySelectorAll('#form details').forEach(d=>d.open=o)}
 // icon, tagline, tile label and colour per settings section (matched by a word in the section title)
 const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slippers, his violin and the master switch.','HQ','#7b1e1e'],
- ['Irregulars','&#129490;&#128225;','Street urchins who notice every stranger with a phone or a watch. Perfect in the wild, where nobody should be.','Irregulars','#6b4f2e'],
+ ['Irregulars','&#129490;&#128225;','Street urchins who notice every stranger carrying a phone. Perfect in the wild, where nobody should be.','Irregulars','#6b4f2e'],
  ['Second Witness','&#128373;&#65039;&#129309;','Two sensors must agree before the alarm sounds. One startled cat is not a burglar.','Witness','#4a6b2e'],
  ['Timetable','&#128197;&#128373;&#65039;','Mrs. Hudson locks up at night and unlocks when you come home. She notices your phone.','Timetable','#8e5a1e'],
  ['Telegraph Office','&#128225;&#9749;','How the house talks to the outside world. Leave Wi-Fi blank to keep the built-in network.','Wi-Fi','#1f5f8b'],
@@ -582,6 +582,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.9.1','2026-11-07','The Irregulars Lose Their Bluetooth',['Fix: switching the Irregulars on crashed the board (Bluetooth ran the chip out of memory). They now listen for phones on Wi-Fi only, and 30 KB of memory is back']],
  ['3.9','2026-11-07','The Baker Street Irregulars',['The Baker Street Irregulars: counts phones, watches and trackers nearby (Bluetooth LE and Wi-Fi probe requests) and raises the alarm when more than usual show up', 'The Irregulars card on The Scene with the nearby devices and a These are mine button']],
  ['3.8','2026-11-07','The Adventure of the Second Witness',['The Second Witness: optionally only alarm when two different sensors fire within a few seconds (fewer false alarms from animals and wind)', 'Tripwire 4 defaults to an RCWL-0516 microwave sensor (pull-down, goes HIGH)']],
  ['3.7','2026-11-07','The Tidy Study',['Cleaner settings: ON/OFF switches, HIGH/LOW buttons instead of drop-downs, and the five actions as one row of chips', 'Alarm bell: ON/OFF switch and Active HIGH / Active LOW buttons, also on The Scene (applied at once)', 'Sensors row on The Scene: switch each sensor on or off, or all at once (All back on restores the ones you had)']],

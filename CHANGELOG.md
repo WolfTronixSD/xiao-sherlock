@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.9.1 (2026-11-07)
+- Fix: switching the Irregulars on crashed the board (the Bluetooth stack ran the chip out of internal memory). Bluetooth is gone; the Irregulars now listen to Wi-Fi probe requests only, and the ~30 KB of memory Bluetooth reserved is back.
+
 ## 3.9 (2026-11-07): The Baker Street Irregulars
 - The Baker Street Irregulars: counts phones, watches and trackers nearby (Bluetooth LE and Wi-Fi probe requests) and raises the alarm when more than usual show up
 - The Irregulars card on The Scene with the nearby devices and a These are mine button

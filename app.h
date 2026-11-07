@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.9"
+#define FW_VERSION "3.9.1"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -76,14 +76,12 @@ struct Config {
   int  sonarEcho = 4;
   int  sonarCm = 100;
   Actions sonarAct = {true, false, false, true};
-  // the Baker Street Irregulars: phones, watches and trackers nearby (BLE + Wi-Fi probe requests)
+  // the Baker Street Irregulars: phones nearby (Wi-Fi probe requests)
   bool irrEn = false;
-  bool irrBle = true;
-  bool irrWifi = true;
   int  irrRssi = -80;       // only count devices stronger than this (dBm)
   int  irrBaseline = 0;     // devices normally around (yours)
   int  irrExtra = 1;        // alarm when this many more than the baseline...
-  int  irrHoldSec = 20;     // ...stay for this long
+  int  irrHoldSec = 30;     // ...stay for this long
   Actions irrAct = {true, false, false, true};
   // Telegram
   bool tgEn = false;
