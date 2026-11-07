@@ -53,7 +53,9 @@ static void countBoot() {
       if (wdtMagic == 0xC0FFEE21) {
         wdtTask[0][15] = wdtTask[1][15] = 0;
         live.wdtWho = String("core 0 busy with \"") + wdtTask[0] + "\", core 1 with \"" + wdtTask[1] + "\"";
-        live.resetWhy += ": " + live.wdtWho;
+        static String why;  // resetWhy is a plain C string, so keep the text alive here
+        why = String("watchdog (a task hung): ") + live.wdtWho;
+        live.resetWhy = why.c_str();
       }
       break;
     case ESP_RST_WDT:      live.resetWhy = "watchdog (chip hung, often a power dip)"; break;
