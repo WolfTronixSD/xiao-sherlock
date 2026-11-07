@@ -516,7 +516,8 @@ async function loadSettings(){setLoaded=false;$('sealBtn').disabled=true;let s,c
  const groups={};schema.forEach(f=>(groups[f.g]=groups[f.g]||[]).push(f));
  const keys=Object.keys(groups),secOf=g=>SECTION.find(x=>g.includes(x[0]))||['','&#128269;','','More','#6b5536'];
  // a section counts as "on" when its first tick box is ticked (Detect motion, Radar enabled, ...); "Armed" for HQ
- const onOf=g=>{const b=groups[g].find(f=>f.t=='b');return b?!!cfg[b.k]:null};
+ // a section whose first field is a mode list starting with "Off" (Night Watch) is on when that list is not Off
+ const onOf=g=>{const k=onKey(groups[g]);return k?(typeof cfg[k]=='boolean'?cfg[k]:cfg[k]!=0):null};
  $('jump').innerHTML=keys.map((g,i)=>{const s=secOf(g),on=onOf(g),n=(g.match(/Tripwire (\d)/)||[])[1];
   return `<button style="--sc:${s[4]}" onclick="jumpTo(${i})"><span class="ico">${s[1]}</span>${s[3]}${n?' '+n:''}${on==null?'':`<i class="dot ${on?'on':''}"></i>`}</button>`}).join('');
  $('form').innerHTML=keys.map((g,i)=>{const s=secOf(g),on=onOf(g);
@@ -527,9 +528,10 @@ async function loadSettings(){setLoaded=false;$('sealBtn').disabled=true;let s,c
  setLoaded=true;$('sealBtn').disabled=false;$('saveMsg').textContent=''}
 // after saving, refresh the ON/off badges and the green dots on the tiles
 function refreshOnOff(){const groups={};schema.forEach(f=>(groups[f.g]=groups[f.g]||[]).push(f));
- Object.keys(groups).forEach((g,i)=>{const b=groups[g].find(f=>f.t=='b');if(!b)return;const on=$('f_'+b.k).checked,sec=$('sec'+i);
+ Object.keys(groups).forEach((g,i)=>{const k=onKey(groups[g]);if(!k)return;const e=$('f_'+k);if(!e)return;const on=e.type=='checkbox'?e.checked:e.value!='0',sec=$('sec'+i);
   const o=sec&&sec.querySelector('.onoff');if(o){o.textContent=on?'ON':'off';o.classList.toggle('on',on)}
   const d=$('jump').children[i]&&$('jump').children[i].querySelector('.dot');if(d)d.classList.toggle('on',on)})}
+function onKey(fs){const f=fs[0];if(f&&f.t=='e'&&/^0:Off\|/.test(f.o||''))return f.k;const b=fs.find(f=>f.t=='b');return b?b.k:null}
 function jumpTo(i){const f=$('sec'+i);f.querySelector('details').open=true;f.scrollIntoView({behavior:'smooth',block:'start'})}
 function openAll(o){document.querySelectorAll('#form details').forEach(d=>d.open=o)}
 // icon, tagline, tile label and colour per settings section (matched by a word in the section title)
@@ -552,7 +554,7 @@ const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slip
  ['Diogenes Club','&#127963;&#65039;&#129323;','Mycroft never speaks, but he reads every report: MQTT and Home Assistant.','MQTT / HA','#455a64']];
 const ACTS=[['photo','&#128247;','Photos'],['video','&#127909;','Video'],['audio','&#127908;','Audio'],['notify','&#128232;','Alert'],['siren','&#128276;','Bell']];
 function segPick(b,id,val){const e=$(id);if(e.type=='checkbox')e.checked=val=='1';else e.value=val;
- b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==b))}
+ b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==b));if(setLoaded)refreshOnOff()}
 function segOf(f,id,v,isBool){const opts=f.o.split('|').map(o=>{const i=o.indexOf(':');return [o.slice(0,i),o.slice(i+1)]});
  const cur=isBool?(v?'1':'0'):String(v);
  return `<span class="seg">${isBool?`<input type="checkbox" id="${id}" hidden ${v?'checked':''}>`:`<input type="hidden" id="${id}" value="${esc(cur)}">`}${opts.map(([k,l])=>`<button type="button" class="${k==cur?'on':''}" onclick="segPick(this,'${id}','${k}')">${esc(l)}</button>`).join('')}</span>`}
@@ -563,7 +565,7 @@ function field(f){const v=cfg[f.k],id='f_'+f.k;let input;
    return `<label class="chip" title="${a[2]}"><input type="checkbox" id="f_${k}" ${cfg[k]?'checked':''}>${a[1]} ${a[2]}</label>`}).join('')}</div>`}
  if(f.t=='b'&&f.o)input=segOf(f,id,v,true);
  else if(f.t=='b')input=`<label class="sw"><input type="checkbox" id="${id}" ${v?'checked':''}><span></span></label>`;
- else if(f.t=='e'&&f.o.split('|').length<=3)input=segOf(f,id,v,false);
+ else if(f.t=='e'&&(f.o.split('|').length<=3||(/^0:Off\|/.test(f.o)&&f.o.split('|').length<=4)))input=segOf(f,id,v,false);
  else if(f.t=='i'&&f.max-f.min<=200)input=`<span style="display:flex;gap:6px;align-items:center"><input type="range" value="${v}" min="${f.min}" max="${f.max}" style="width:130px;accent-color:var(--red)"
   oninput="$('${id}').value=this.value"><input type="number" id="${id}" value="${v}" min="${f.min}" max="${f.max}" style="width:70px" oninput="this.previousElementSibling.value=this.value"></span>`;
  else if(f.t=='i')input=`<input type="number" id="${id}" value="${v}" min="${f.min}" max="${f.max}">`;
@@ -604,7 +606,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
- ['3.9.2','2026-11-07','The Pocket Watch',["The header carries a brass pocket watch with the board's time, the date, a remark for the hour, and the firmware version as a wax seal","The arm button now says plainly ARMED or DISARMED, with tap to disarm or arm underneath. Disarming asks first"]],
+ ['3.9.2','2026-11-07','The Pocket Watch',["The header carries a brass pocket watch with the board's time, the date, a remark for the hour, and the firmware version as a wax seal","The arm button now says plainly ARMED or DISARMED, with tap to disarm or arm underneath. Disarming asks first","The Night Watch on/off is now a row of buttons (Off, When dark, By the clock, Always on), and its ON badge follows it"]],
  ['3.9.1','2026-11-07','The Irregulars Lose Their Bluetooth',['Fix: switching the Irregulars on crashed the board (Bluetooth ran the chip out of memory). They now listen for phones on Wi-Fi only, and 30 KB of memory is back']],
  ['3.9','2026-11-07','The Baker Street Irregulars',['The Baker Street Irregulars: counts phones, watches and trackers nearby (Bluetooth LE and Wi-Fi probe requests) and raises the alarm when more than usual show up', 'The Irregulars card on The Scene with the nearby devices and a These are mine button']],
  ['3.8','2026-11-07','The Adventure of the Second Witness',['The Second Witness: optionally only alarm when two different sensors fire within a few seconds (fewer false alarms from animals and wind)', 'Tripwire 4 defaults to an RCWL-0516 microwave sensor (pull-down, goes HIGH)']],

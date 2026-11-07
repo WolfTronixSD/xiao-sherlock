@@ -175,7 +175,7 @@ void buildFields() {
   addActions(g, "irr", cfg.irrAct);
 
   g = "The Night Watch (IR lamp & black and white)";
-  add(g, "nightMode", "Night watch", 'e', &cfg.nightMode, 0, 0, "0:Off|1:When it gets dark (light level)|2:By the clock|3:Always on",
+  add(g, "nightMode", "Night watch (on or off)", 'e', &cfg.nightMode, 0, 0, "0:Off|1:When dark|2:By the clock|3:Always on",
       "The light level is shown on The Scene next to the Night Watch lamp. If your IR lamp lights the room so well that it looks like day, use By the clock.");
   add(g, "nightBelow", "Night begins below light level", 'i', &cfg.nightBelow, 0, 255);
   add(g, "nightAbove", "Day returns above light level", 'i', &cfg.nightAbove, 0, 255, nullptr,
