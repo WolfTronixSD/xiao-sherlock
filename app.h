@@ -5,13 +5,13 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.8"
+#define FW_VERSION "3.9"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
 
 // ---------- event sources ----------
-enum Source { SRC_SOUND, SRC_MOTION, SRC_INPUT1, SRC_INPUT2, SRC_INPUT3, SRC_INPUT4, SRC_RADAR, SRC_SONAR, SRC_TEST, SRC_COUNT };
+enum Source { SRC_SOUND, SRC_MOTION, SRC_INPUT1, SRC_INPUT2, SRC_INPUT3, SRC_INPUT4, SRC_RADAR, SRC_SONAR, SRC_IRREG, SRC_TEST, SRC_COUNT };
 
 struct Actions { bool photo, video, audio, notify, siren; };
 struct Input   { bool en; char name[20]; int pin; int pull; int edge; Actions act; };
@@ -76,6 +76,15 @@ struct Config {
   int  sonarEcho = 4;
   int  sonarCm = 100;
   Actions sonarAct = {true, false, false, true};
+  // the Baker Street Irregulars: phones, watches and trackers nearby (BLE + Wi-Fi probe requests)
+  bool irrEn = false;
+  bool irrBle = true;
+  bool irrWifi = true;
+  int  irrRssi = -80;       // only count devices stronger than this (dBm)
+  int  irrBaseline = 0;     // devices normally around (yours)
+  int  irrExtra = 1;        // alarm when this many more than the baseline...
+  int  irrHoldSec = 20;     // ...stay for this long
+  Actions irrAct = {true, false, false, true};
   // Telegram
   bool tgEn = false;
   char tgToken[64] = "";
@@ -230,6 +239,11 @@ void mqttEvent(const String &kind, const String &who, const String &detail);
 void campEarly();
 bool campQuiet();
 void campStart();
+// irregulars.cpp
+void irregularsStart();
+void irregularsApplyConfig();
+String irregularsJson();
+int irregularsNow();
 void campSleepNow();
 int  campSleepIn();
 const char *campWakeWhy();

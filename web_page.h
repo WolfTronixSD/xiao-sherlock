@@ -51,7 +51,7 @@ th{text-align:left;font-family:'IM Fell English SC',serif;font-weight:normal;fon
 td{border-bottom:1px dotted #b9a171;padding:5px 4px;vertical-align:top}
 .log td{font-family:'Special Elite',monospace}
 .kind{display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;color:#fff;background:var(--faded)}
-.k-sound{background:#5c3b7a}.k-motion{background:#8a5a14}.k-radar{background:#1d5c63}.k-sonar{background:#3b4f8a}.k-test{background:#555}
+.k-sound{background:#5c3b7a}.k-motion{background:#8a5a14}.k-radar{background:#1d5c63}.k-sonar{background:#3b4f8a}.k-irregulars{background:#6b4f2e}.k-test{background:#555}
 .k-saved{background:var(--green)}.k-error,.k-warning{background:var(--red)}.k-input1,.k-input2,.k-input3,.k-input4{background:#7b1e1e}
 .quote{font-style:italic;color:var(--faded);font-size:12px}
 fieldset{border:1px solid #cdb98c;border-left:10px solid var(--sc,#6b5536);border-radius:8px;margin:0 0 14px;padding:0;background:var(--card);scroll-margin-top:90px}
@@ -160,6 +160,11 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
    <div class="card"><h2>&#129658; The Doctor's Report</h2><table class="health" id="health"></table>
     <div class="small">Green: in good health. Amber: keep an eye on it. Red: send for Dr Watson.</div>
     <div class="row" id="campRow" style="display:none"><button class="btn plain" onclick="sleepNow()">&#128164; Send Holmes to sleep now</button></div></div>
+   <div class="card" id="irrCard" style="display:none"><h2>&#129490; The Irregulars</h2>
+    <div><b id="irrNow" style="font-size:22px">?</b> phones and watches nearby <span class="small" id="irrBase"></span></div>
+    <div class="small" id="irrTxt"></div>
+    <table class="health" id="irrList" style="margin-top:6px"></table>
+    <div class="row"><button class="btn plain" onclick="irrMine()">These are mine</button><span class="small">sets the normal count to what is around now</span></div></div>
    <div class="card"><h2>The Radar</h2><canvas id="radar" width="340" height="190"></canvas>
     <div class="small" id="radarTxt"></div>
     <div class="row" style="align-items:center;gap:8px;margin-top:6px"><label for="radarMm"><b>Trigger closer than</b></label>
@@ -253,7 +258,7 @@ const QUIPS=["When you have eliminated the impossible, whatever remains is proba
 const REMARKS={sound:["A noise! Possibly Moriarty, possibly the kettle.","Someone sneezed in the drawing room.","The walls have ears. Ours, specifically."],
 motion:["Something moved. The plot thickens.","A shadow at the window!","Movement, Watson! Fetch my revolver. Or a biscuit."],
 input1:["The tripwire has spoken.","A door opens; a mystery begins."],input2:["The tripwire has spoken."],input3:["The tripwire has spoken."],input4:["The tripwire has spoken."],
-radar:["A figure approaches through the fog.","The radar sees what the eye cannot."],sonar:["The bat ears detect a visitor."],
+radar:["A figure approaches through the fog.","The radar sees what the eye cannot."],sonar:["The bat ears detect a visitor."],irregulars:["The street urchins report a stranger.","Wiggins says someone is coming up the road."],
 test:["Inspector Lestrade blunders in, as expected."],saved:["Evidence secured."],start:["221B opens its doors."],config:["Watson takes notes."],
 error:["Confound it!"],warning:["Hmm. Most irregular."],deleted:["Evidence destroyed. Very suspicious."]};
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -278,7 +283,7 @@ function hdrInfo(){const m=/^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)/.exec(st.time||
  const t=m?new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5],+m[6]).toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'clock not set';
  $('hdrInfo').textContent='Firmware v'+(st.fw||'?')+'  \u00b7  '+t}
 async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=await (await api('/api/status')).json()}catch(e){return}finally{stBusy=false}
- hdrInfo();
+ hdrInfo();$('irrCard').style.display=st.irrEn?'':'none';if(st.irrEn&&tab=='scene')irrPoll();
  $('homeChip').textContent=st.phoneHome==1?'\u{1F4F1} Holmes is home':st.phoneHome==0?'\u{1F4F1} Holmes is out':'';
  const seal=$('seal');seal.textContent=st.armed?'The game is afoot!':'Holmes is off duty';seal.classList.toggle('off',!st.armed);
  const pct=v=>Math.max(0,Math.min(100,(v+90)/90*100));
@@ -305,7 +310,7 @@ async function bellCfg(k,v){bellBusy=true;try{await api('/api/sirencfg?'+k+'='+(
  toast(k=='en'?(v?'Alarm bell on.':'Alarm bell off.'):(v?'Bell rings when the pin goes LOW.':'Bell rings when the pin goes HIGH.'))}catch(e){toast('Failed: '+e.message)}
  bellBusy=false;$('bellEn').checked=!!st.sirenEn;$('bellHi').classList.toggle('on',!st.sirenLow);$('bellLo').classList.toggle('on',!!st.sirenLow);$('bellBtn').disabled=!st.sirenEn}
 // ---------- quick sensor switches (saved at once) ----------
-const SENS=[['soundEn','&#128066; Sound'],['motionEn','&#128065;&#65039; Motion'],['in1_en',1],['in2_en',2],['in3_en',3],['in4_en',4],['radarEn','&#128225; Radar'],['sonarEn','&#129415; Sonar']];
+const SENS=[['soundEn','&#128066; Sound'],['motionEn','&#128065;&#65039; Motion'],['in1_en',1],['in2_en',2],['in3_en',3],['in4_en',4],['radarEn','&#128225; Radar'],['sonarEn','&#129415; Sonar'],['irrEn','&#129490; Irregulars']];
 function sensLabel(s){return typeof s[1]=='number'?'&#129700; '+esc(cfg['in'+s[1]+'_name']||('Input '+s[1])):s[1]}
 function drawSens(){if(!cfg||cfg.soundEn===undefined)return;const any=SENS.some(s=>cfg[s[0]]);
  $('sensChips').innerHTML=SENS.map(s=>`<span class="chip ${cfg[s[0]]?'on':''}" onclick="sensSet({${s[0]}:${!cfg[s[0]]}})">${sensLabel(s)}</span>`).join('');
@@ -316,6 +321,15 @@ function allSensors(){const on=SENS.filter(s=>cfg[s[0]]).map(s=>s[0]);let o={};
  if(on.length){try{localStorage.setItem('sensWereOn',JSON.stringify(on))}catch(e){}SENS.forEach(s=>o[s[0]]=false);toast('All sensors off. The camera still watches the live view.')}
  else{let was=['motionEn'];try{was=JSON.parse(localStorage.getItem('sensWereOn'))||was}catch(e){}was.forEach(k=>o[k]=true);toast('Sensors back on.')}
  sensSet(o)}
+// ---------- the Irregulars (phones and watches nearby) ----------
+let irrBusy=false,irrLast=0;
+async function irrPoll(){if(irrBusy||Date.now()-irrLast<2000)return;irrBusy=true;irrLast=Date.now();
+ try{const j=await (await api('/api/irregulars')).json();$('irrNow').textContent=j.now;
+  $('irrBase').textContent=`(normal ${j.base}, alarm at ${j.base+j.extra}, counting stronger than ${j.rssi} dBm)`;
+  $('irrTxt').textContent=(j.ble?'Bluetooth: listening':'Bluetooth: off')+' \u00b7 '+(j.wifi?'Wi-Fi: listening':'Wi-Fi: off (needs Wi-Fi on)')+' \u00b7 free memory '+Math.round(j.heap/1024)+' KB';
+  $('irrList').innerHTML=j.list.map(d=>`<tr><td>${d.k}</td><td>#${esc(d.id)}</td><td>${d.r} dBm</td><td>${d.ago?d.ago+' s ago':'now'}</td><td class="small">${d.for>=60?Math.round(d.for/60)+' min':d.for+' s'} seen</td></tr>`).join('')||'<tr><td class="small">Nobody about. The street is empty.</td></tr>'}
+ catch(e){}irrBusy=false}
+async function irrMine(){try{const r=await (await api('/api/irrmine',{method:'POST'})).text();cfg.irrBaseline=+r;const f=$('f_irrBaseline');if(f)f.value=+r;toast('Normal count set to '+r+'.');irrLast=0;irrPoll()}catch(e){toast('Failed: '+e.message)}}
 let radarDrag=null;
 async function radarSave(){const v=radarDrag;try{const r=await (await api('/api/radarmm?mm='+v,{method:'POST'})).text();st.radarMaxMm=cfg.radarMaxMm=+r;
  const f=$('f_radarMaxMm');if(f)f.value=+r;toast('The radar now watches out to '+(r/1000).toFixed(1)+' m.')}catch(e){toast('Failed: '+e.message)}radarDrag=null}
@@ -498,6 +512,7 @@ function jumpTo(i){const f=$('sec'+i);f.querySelector('details').open=true;f.scr
 function openAll(o){document.querySelectorAll('#form details').forEach(d=>d.open=o)}
 // icon, tagline, tile label and colour per settings section (matched by a word in the section title)
 const SECTION=[['Baker Street','&#127913;&#127931;','Where Holmes keeps his slippers, his violin and the master switch.','HQ','#7b1e1e'],
+ ['Irregulars','&#129490;&#128225;','Street urchins who notice every stranger with a phone or a watch. Perfect in the wild, where nobody should be.','Irregulars','#6b4f2e'],
  ['Second Witness','&#128373;&#65039;&#129309;','Two sensors must agree before the alarm sounds. One startled cat is not a burglar.','Witness','#4a6b2e'],
  ['Timetable','&#128197;&#128373;&#65039;','Mrs. Hudson locks up at night and unlocks when you come home. She notices your phone.','Timetable','#8e5a1e'],
  ['Telegraph Office','&#128225;&#9749;','How the house talks to the outside world. Leave Wi-Fi blank to keep the built-in network.','Wi-Fi','#1f5f8b'],
@@ -567,6 +582,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.9','2026-11-07','The Baker Street Irregulars',['The Baker Street Irregulars: counts phones, watches and trackers nearby (Bluetooth LE and Wi-Fi probe requests) and raises the alarm when more than usual show up', 'The Irregulars card on The Scene with the nearby devices and a These are mine button']],
  ['3.8','2026-11-07','The Adventure of the Second Witness',['The Second Witness: optionally only alarm when two different sensors fire within a few seconds (fewer false alarms from animals and wind)', 'Tripwire 4 defaults to an RCWL-0516 microwave sensor (pull-down, goes HIGH)']],
  ['3.7','2026-11-07','The Tidy Study',['Cleaner settings: ON/OFF switches, HIGH/LOW buttons instead of drop-downs, and the five actions as one row of chips', 'Alarm bell: ON/OFF switch and Active HIGH / Active LOW buttons, also on The Scene (applied at once)', 'Sensors row on The Scene: switch each sensor on or off, or all at once (All back on restores the ones you had)']],
  ['3.6','2026-11-07','The Problem of the Vanishing Card',['Radar trigger distance slider on The Scene, saved at once without restarting the radar', 'Fix: the piezo tone could take the camera clock (LEDC timer 0) and stop the pictures', 'The camera restarts itself if no pictures arrive, and a missing SD card is retried every minute', 'Restarts say which watchdog fired; a normal software restart is no longer shown in red']],

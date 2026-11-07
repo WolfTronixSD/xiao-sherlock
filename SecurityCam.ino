@@ -120,6 +120,7 @@ void setup() {
   telegramStart();
   presenceStart();
   outputsStart();
+  irregularsStart();
   campStart();
   janitorStart();
   logEvent("start", "Holmes", String("on duty, ") + (cfg.armed ? "ARMED" : "disarmed") + ", firmware " FW_VERSION +
