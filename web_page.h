@@ -16,6 +16,11 @@ header{display:flex;flex-wrap:wrap;align-items:center;gap:14px;border-bottom:3px
  padding:4px 16px;border-radius:6px;box-shadow:inset 0 0 0 2px #7a5a28,0 2px 4px rgba(0,0,0,.35);text-shadow:0 1px 0 #f3dfa8}
 h1{font-family:'IM Fell English SC',serif;font-weight:normal;margin:0;font-size:24px;line-height:1.1}
 .quip{font-style:italic;color:var(--faded);font-size:13px;min-height:1.2em}
+.watch{display:flex;align-items:center;gap:12px;background:radial-gradient(circle at 30% 25%,#fff8e6,#efdcae 70%);border:2px solid #b08d57;border-radius:14px;padding:6px 14px 6px 8px;box-shadow:inset 0 0 0 3px #f6ead0,0 2px 6px #0003}
+.dial{width:54px;height:54px;flex:none}.dial circle.face{fill:#fffaf0;stroke:#9c7840;stroke-width:3}.dial line{stroke:#2b1d0e;stroke-linecap:round}
+.wt{font-family:'IM Fell English SC',serif;font-size:28px;line-height:1;letter-spacing:1px;color:var(--ink)}.wt small{font-size:16px;color:var(--faded)}
+.wd{font-size:12px;color:var(--faded);font-style:italic}.wq{font-size:11px;color:var(--red)}
+.fw{display:inline-block;background:radial-gradient(circle at 35% 30%,#b53a3a,#6d1414);color:#f6e7c8;font-family:'IM Fell English SC',serif;font-size:12px;border-radius:50%;width:46px;height:46px;line-height:46px;text-align:center;box-shadow:0 2px 4px #0005,inset 0 0 0 3px #8e2424;transform:rotate(-12deg);flex:none}
 .seal{margin-left:auto;border:0;cursor:pointer;border-radius:50px;padding:12px 20px;font-family:'IM Fell English SC',serif;font-size:17px;color:#fff;
  background:radial-gradient(circle at 35% 30%,#b23a3a,#6d1414);box-shadow:0 3px 6px rgba(0,0,0,.4),inset 0 -3px 6px rgba(0,0,0,.4)}
 .seal.off{background:radial-gradient(circle at 35% 30%,#8a8a7a,#4e4e44)}
@@ -113,8 +118,13 @@ legend{font-family:'IM Fell English SC',serif;font-size:18px;padding:0 6px}
 </style></head><body><div class="wrap">
 <header>
  <div class="plaque">221B</div>
- <div><h1>The Baker Street Irregular<br>Surveillance Society</h1><div class="quip" id="quip"></div><div class="small" id="hdrInfo"></div></div>
+ <div><h1>The Baker Street Irregular<br>Surveillance Society</h1><div class="quip" id="quip"></div></div>
  <span class="small" id="homeChip" style="margin-left:auto"></span>
+ <div class="watch" title="The board's own clock"><svg class="dial" viewBox="0 0 54 54"><circle class="face" cx="27" cy="27" r="24"/>
+  <g id="ticks"></g><line id="hH" x1="27" y1="27" x2="27" y2="15" stroke-width="3"/><line id="hM" x1="27" y1="27" x2="27" y2="9" stroke-width="2"/>
+  <line id="hS" x1="27" y1="30" x2="27" y2="7" stroke-width="1" style="stroke:#7b1e1e"/><circle cx="27" cy="27" r="2" fill="#7b1e1e"/></svg>
+  <div><div class="wt" id="wTime">--:--</div><div class="wd" id="wDate">winding the watch...</div><div class="wq" id="wQuip"></div></div>
+  <span class="fw" id="fwBadge" title="Firmware version">v?</span></div>
  <button id="seal" class="seal" onclick="toggleArm()">...</button>
 </header>
 <nav id="nav"></nav>
@@ -279,9 +289,20 @@ $('quip').textContent=pick(QUIPS);setInterval(()=>$('quip').textContent=pick(QUI
 // ---------- status / instruments ----------
 let st={},cfg={};
 let stBusy=false,stLast=0;
+// ---------- the pocket watch: the board's clock, ticking locally between status polls ----------
+let boardOff=null;
+$('ticks').innerHTML=[...Array(12)].map((_,i)=>{const a=i*Math.PI/6,r1=i%3?20:18;return `<line x1="${27+r1*Math.sin(a)}" y1="${27-r1*Math.cos(a)}" x2="${27+22*Math.sin(a)}" y2="${27-22*Math.cos(a)}" stroke-width="${i%3?1:2}"/>`}).join('');
+function hourQuip(h){return h<5?'The small hours. Even Moriarty sleeps.':h<8?'Dawn over Baker Street.':h<11?'Breakfast: kippers and a fresh case.':h<13?'Morning rounds, Watson.':h<15?'Luncheon at Simpson\'s.':h<17?'Tea is served. Biscuits are evidence.':h<19?'The lamps are being lit.':h<22?'A violin plays upstairs.':'The fog rolls in. Stay alert.'}
+function hand(id,deg){$(id).setAttribute('transform',`rotate(${deg} 27 27)`)}
+function watchTick(){if(boardOff==null){$('wTime').textContent='--:--';$('wDate').textContent='the clock is not set';return}
+ const d=new Date(Date.now()+boardOff),h=d.getHours(),m=d.getMinutes(),s=d.getSeconds();
+ $('wTime').innerHTML=`${String(h%12||12)}:${String(m).padStart(2,'0')}<small>:${String(s).padStart(2,'0')} ${h<12?'am':'pm'}</small>`;
+ $('wDate').textContent=d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+ $('wQuip').textContent=hourQuip(h);hand('hH',(h%12)*30+m/2);hand('hM',m*6);hand('hS',s*6)}
+setInterval(watchTick,1000);
 function hdrInfo(){const m=/^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)/.exec(st.time||'');
- const t=m?new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5],+m[6]).toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'clock not set';
- $('hdrInfo').textContent='Firmware v'+(st.fw||'?')+'  \u00b7  '+t}
+ boardOff=m?new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5],+m[6]).getTime()-Date.now():null;
+ $('fwBadge').textContent='v'+(st.fw||'?');watchTick()}
 async function status(){if(stBusy)return;stBusy=true;stLast=Date.now();try{st=await (await api('/api/status')).json()}catch(e){return}finally{stBusy=false}
  hdrInfo();$('irrCard').style.display=st.irrEn?'':'none';if(st.irrEn&&tab=='scene')irrPoll();
  $('homeChip').textContent=st.phoneHome==1?'\u{1F4F1} Holmes is home':st.phoneHome==0?'\u{1F4F1} Holmes is out':'';
@@ -582,6 +603,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.9.2','2026-11-07','The Pocket Watch',["The header carries a brass pocket watch with the board's time, the date, a remark for the hour, and the firmware version as a wax seal"]],
  ['3.9.1','2026-11-07','The Irregulars Lose Their Bluetooth',['Fix: switching the Irregulars on crashed the board (Bluetooth ran the chip out of memory). They now listen for phones on Wi-Fi only, and 30 KB of memory is back']],
  ['3.9','2026-11-07','The Baker Street Irregulars',['The Baker Street Irregulars: counts phones, watches and trackers nearby (Bluetooth LE and Wi-Fi probe requests) and raises the alarm when more than usual show up', 'The Irregulars card on The Scene with the nearby devices and a These are mine button']],
  ['3.8','2026-11-07','The Adventure of the Second Witness',['The Second Witness: optionally only alarm when two different sensors fire within a few seconds (fewer false alarms from animals and wind)', 'Tripwire 4 defaults to an RCWL-0516 microwave sensor (pull-down, goes HIGH)']],
