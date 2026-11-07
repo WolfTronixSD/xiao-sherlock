@@ -12,7 +12,7 @@
 #define IRR_MAX 48
 #define IRR_WIFI 2
 
-struct Seen { uint32_t id; int8_t rssi; uint8_t kind; uint32_t first, last; };
+struct Seen { uint32_t id; int8_t rssi; uint8_t kind; bool mine; uint32_t first, last; };  // mine: marked by "These are mine"
 static Seen seen[IRR_MAX];
 static portMUX_TYPE seenMux = portMUX_INITIALIZER_UNLOCKED;
 static volatile bool dirty = true;
@@ -32,7 +32,7 @@ static void note(uint32_t id, int rssi, uint8_t kind) {
     if (seen[i].id == id && seen[i].kind == kind) { slot = i; break; }
     if (seen[i].last < seen[oldest].last) oldest = i;
   }
-  if (slot < 0) { slot = oldest; seen[slot] = {id, (int8_t)rssi, kind, t, t}; }
+  if (slot < 0) { slot = oldest; seen[slot] = {id, (int8_t)rssi, kind, false, t, t}; }
   else { seen[slot].rssi = (int8_t)((seen[slot].rssi * 3 + rssi) / 4); seen[slot].last = t; }  // smooth the signal a little
   portEXIT_CRITICAL(&seenMux);
 }
@@ -78,6 +78,15 @@ static int countHere(uint32_t t, int *strongest) {
   return n;
 }
 
+// "These are mine": everything heard in the last 2 minutes is marked as familiar (until it changes its address)
+void irregularsMarkMine() {
+  uint32_t t = millis();
+  portENTER_CRITICAL(&seenMux);
+  for (auto &s : seen)
+    if (s.id && t - s.last <= 120000UL) s.mine = true;
+  portEXIT_CRITICAL(&seenMux);
+}
+
 int irregularsNow() { return cfg.irrEn ? nowCount : -1; }
 
 String irregularsJson() {
@@ -92,11 +101,12 @@ String irregularsJson() {
              ",\"extra\":" + cfg.irrExtra + ",\"rssi\":" + cfg.irrRssi + ",\"heap\":" + ESP.getFreeHeap() + ",\"list\":[";
   int n = 0;
   for (auto &s : copy) {
-    if (!s.id || t - s.last > 120000UL || n >= 12) continue;
+    if (!s.id || t - s.last > 120000UL || n >= 16) continue;
     char id[9];
     snprintf(id, sizeof(id), "%08lx", (unsigned long)s.id);
     j += String(n++ ? "," : "") + "{\"k\":\"" + "Wi-Fi" + "\",\"id\":\"" + String(id).substring(0, 4) +
-         "\",\"r\":" + s.rssi + ",\"ago\":" + (t - s.last) / 1000 + ",\"for\":" + (s.last - s.first) / 1000 + "}";
+         "\",\"r\":" + s.rssi + ",\"ago\":" + (t - s.last) / 1000 + ",\"for\":" + (s.last - s.first) / 1000 +
+         ",\"new\":" + (t - s.first) / 1000 + ",\"m\":" + (s.mine ? "1" : "0") + "}";
   }
   return j + "]}";
 }

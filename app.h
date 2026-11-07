@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.9.3"
+#define FW_VERSION "3.9.4"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -242,6 +242,7 @@ void irregularsStart();
 void irregularsApplyConfig();
 String irregularsJson();
 int irregularsNow();
+void irregularsMarkMine();
 void campSleepNow();
 int  campSleepIn();
 const char *campWakeWhy();
