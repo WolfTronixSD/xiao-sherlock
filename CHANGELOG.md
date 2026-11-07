@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.6.1 (2026-11-07)
+- Fix: a missing camera filled the case log with "camera restart failed" twice a second; it now retries every 30 s and logs rarely.
+
 ## 3.6 (2026-11-07): The Problem of the Vanishing Card
 - Radar trigger distance slider on The Scene, saved at once without restarting the radar
 - Fix: the piezo tone could take the camera clock (LEDC timer 0) and stop the pictures
