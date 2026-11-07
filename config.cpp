@@ -61,6 +61,8 @@ void buildFields() {
   }
   cfg.in[1].pull = 0;  // second input defaults to a PIR (drives its own output)
   strlcpy(cfg.in[1].name, "PIR", sizeof(cfg.in[1].name));
+  cfg.in[3].pull = 2;  // fourth input defaults to an RCWL-0516 microwave sensor (OUT drives 3.3 V)
+  strlcpy(cfg.in[3].name, "RCWL-0516", sizeof(cfg.in[3].name));
 
   fields.clear();
   String g = "Baker Street HQ";
@@ -74,6 +76,11 @@ void buildFields() {
       "Whole days go, oldest first, until the card is below this again. Today and the case log are never touched.");
   add(g, "tz", "Time zone (POSIX TZ string)", 's', cfg.tz, 0, sizeof(cfg.tz), nullptr,
       "Pacific: PST8PDT,M3.2.0,M11.1.0  Central Europe: CET-1CEST,M3.5.0,M10.5.0/3  UTC: UTC0");
+
+  g = "The Second Witness (fewer false alarms)";
+  add(g, "witnessEn", "Only alarm when two different sensors agree", 'b', &cfg.witnessEn, 0, 0, nullptr,
+      "One sensor alone is only noted in the case log. When a second, different sensor fires soon after (PIR then radar, radar then microwave...), the alarm goes off with that sensor's actions. A cat or a gust rarely fools two kinds of sensor.");
+  add(g, "witnessSec", "Second sensor must fire within (s)", 'i', &cfg.witnessSec, 1, 60);
 
   g = "Mrs Hudson's Timetable (schedule & phone)";
   add(g, "schedEn", "Arm and disarm on a daily timetable", 'b', &cfg.schedEn);
