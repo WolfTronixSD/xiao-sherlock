@@ -56,30 +56,56 @@ static bool snoozeTg = false;      // the snooze came from Telegram: say so ther
 static uint8_t badPins = 0;
 static uint32_t lockedUntil = 0, lastBadLog = 0;
 
-static const char *CMDS[] = {"arm", "disarm", "status", "ring", "quiet", "snooze", "photo", "sleep", "help"};
+static const char *CMDS[] = {"arm", "disarm", "status", "ring", "quiet", "snooze", "photo", "audio", "video", "last", "log", "mute", "unmute", "sleep", "help"};
+static uint32_t armUntil = 0;  // "arm 2h": disarms by itself then
+static bool armTg = false;
+
+// "2h", "90m", "45" (minutes) -> minutes; def when empty
+static int durMin(const String &a, int def) {
+  if (!a.length()) return def;
+  int v = a.toInt();
+  if (v <= 0) return def;
+  char u = tolower(a[a.length() - 1]);
+  return constrain(u == 'h' ? v * 60 : v, 1, 24 * 60);
+}
+static String durText(int m) { return m % 60 == 0 ? String(m / 60) + " h" : String(m) + " min"; }
 
 static void reply(const String &t) { meshSend("221B: " + t, true); }  // replies skip the one-text-a-minute limit
 static void loraReply(const String &t) { reply(t); }
 
 // Shared by LoRa and Telegram: "via" is "LoRa" or "Telegram", out() sends the answer back the same way
-static void runCommand(const String &cmd, const String &arg, const String &who, const char *via, void (*out)(const String &)) {
+static void runCommand(String cmd, const String &arg, const String &who, const char *via, void (*out)(const String &)) {
   auto reply = out;
   String by = String(via) + (who.length() ? " (" + who + ")" : String(""));
   logEvent(strcmp(via, "LoRa") ? "telegram" : "mesh", by, "command: " + cmd + (arg.length() ? " " + arg : ""));
-  if (cmd == "arm") { snoozeUntil = 0; setArmed(true, by, String("command over ") + via); reply("armed. The game is afoot."); }
-  else if (cmd == "disarm") { snoozeUntil = 0; setArmed(false, by, String("command over ") + via); reply("disarmed. Holmes is off duty."); }
+  bool tg = strcmp(via, "Telegram") == 0;
+  if (cmd == "disarm" && arg.length()) { cmd = "snooze"; }  // "disarm 30" = snooze 30
+  if (cmd == "arm") {
+    snoozeUntil = 0;
+    setArmed(true, by, String("command over ") + via);
+    if (arg.length()) {
+      int m = durMin(arg, 60);
+      armUntil = millis() + m * 60000UL; if (!armUntil) armUntil = 1;
+      armTg = tg;
+      reply("armed for " + durText(m) + ", then disarmed by itself.");
+    } else { armUntil = 0; reply("armed. The game is afoot."); }
+  }
+  else if (cmd == "disarm") { snoozeUntil = 0; armUntil = 0; setArmed(false, by, String("command over ") + via); reply("disarmed. Holmes is off duty."); }
   else if (cmd == "snooze") {
-    int m = arg.toInt();
-    if (m < 1 || m > 720) m = 30;
+    armUntil = 0;
+    int m = durMin(arg, 30);
+    if (m > 720) m = 720;
     setArmed(false, by, String("snoozed over ") + via + " for " + String(m) + " min");
     snoozeUntil = millis() + m * 60000UL;
     snoozeTg = strcmp(via, "Telegram") == 0;
     if (!snoozeUntil) snoozeUntil = 1;
-    reply("disarmed for " + String(m) + " min, then armed again by itself.");
+    reply("disarmed for " + durText(m) + ", then armed again by itself.");
   } else if (cmd == "status") {
     int ph = irregularsNow();
     String t = String(cfg.armed ? "armed" : "disarmed");
     if (snoozeUntil) t += " (snoozed, " + String((int32_t)(snoozeUntil - millis()) / 60000 + 1) + " min left)";
+    if (armUntil && cfg.armed) t += " (until " + String((int32_t)(armUntil - millis()) / 60000 + 1) + " min from now)";
+    if (alertsMuted()) t += ", alerts muted " + String(muteLeftMin()) + " min";
     t += ", " + clockText() + battText() + ", SD " + (live.sdOK ? String(live.freeMB) + " MB free" : String("missing"));
     if (ph >= 0) t += ", phones near " + String(ph);
     if (cfg.campEn) t += ", camp mode";
@@ -92,10 +118,34 @@ static void runCommand(const String &cmd, const String &arg, const String &who, 
     if (strcmp(via, "Telegram") == 0) { reply("snapping one for you."); telegramPhotoNow("221B: the scene at " + clockText()); }
     else { reply("taking photos to the SD card."); cameraRequestPhotos("lora"); }
   }
+  else if (cmd == "last") {
+    String p = cameraLastPhoto();
+    if (!p.length()) reply("no event photo since the last restart.");
+    else if (tg) { reply("the latest clue: " + p.substring(p.lastIndexOf('/') + 1)); telegramSendPhotoFile(p, "221B: the latest clue"); }
+    else reply("latest photo: " + p.substring(p.lastIndexOf('/') + 1));
+  }
+  else if (cmd == "log") {
+    int n = constrain(arg.toInt() > 0 ? arg.toInt() : (tg ? 5 : 2), 1, tg ? 20 : 3);
+    reply("case log:\n" + eventsText(n));
+  }
+  else if (cmd == "mute") {
+    int m = durMin(arg, 60);
+    muteFor(m);
+    reply("alerts muted for " + durText(m) + ". Still recording everything.");
+  }
+  else if (cmd == "unmute") { muteFor(0); reply("alerts are back on."); }
+  else if (cmd == "audio" || cmd == "video") {
+    int sec = arg.toInt();
+    if (sec < 1) sec = 5;
+    sec = min(sec, cmd == "audio" ? 30 : 20);
+    String tag = tg ? "telegram-" + cmd : "lora-" + cmd;
+    if (cmd == "audio") audioRequest(tag, sec); else cameraRequestVideo(tag, sec);
+    reply("recording " + String(sec) + " s of " + (cmd == "audio" ? "sound" : "video") + (tg ? ", it follows in a moment." : " to the SD card."));
+  }
   else if (cmd == "sleep") {
     if (!cfg.campEn) reply("camp mode is off, so the house stays awake.");
     else { reply("going to sleep."); delay(1500); campSleepNow(); }
-  } else reply("commands: arm, disarm, status, ring [s], quiet, snooze [min], photo, sleep");
+  } else reply("commands: status, arm [2h], disarm [30], snooze [min], mute [1h], unmute, ring [s], quiet, photo, audio [s], video [s], last, log [n], sleep");
 }
 
 static bool isCmd(const String &c) { for (auto k : CMDS) if (c == k) return true; return false; }
@@ -132,7 +182,7 @@ static void handleLine(String line) {
   k++;
   String arg = k < n ? w[k] : String("");
   if (n - k > 1) return;                            // "arm the gate later" is chat, not a command
-  if (arg.length() && arg.toInt() <= 0) return;     // the only arguments are numbers
+  if (arg.length() && arg.toInt() <= 0) return;     // the only arguments are numbers (2h, 30m allowed)
   uint32_t now = millis();
   if (!cfg.meshCmdEn) { if (now - lastBadLog > 30000UL) { lastBadLog = now; logEvent("mesh", "LoRa", "ignored a command: two-way is switched off"); } return; }
   if (lockedUntil && (int32_t)(lockedUntil - now) > 0) return;
@@ -173,6 +223,13 @@ static void meshCmdTask(void *) {
       if (!cfg.armed) {
         setArmed(true, snoozeTg ? "Telegram" : "LoRa", "the snooze is over");
         if (snoozeTg) telegramAlert("221B: snooze over, armed again.", false, true); else reply("snooze over, armed again.");
+      }
+    }
+    if (armUntil && (int32_t)(millis() - armUntil) >= 0) {
+      armUntil = 0;
+      if (cfg.armed) {
+        setArmed(false, armTg ? "Telegram" : "LoRa", "the timed watch is over");
+        if (armTg) telegramAlert("221B: timed watch over, disarmed.", false, true); else reply("timed watch over, disarmed.");
       }
     }
     if (!meshActive || cfg.meshRx < 0) { buf = ""; continue; }
@@ -284,7 +341,7 @@ static void reportIntruder() {
   if (cfg.armed) {
     cameraRequestPhotos("camp");
     cameraRequestVideo("camp");
-    meshSend(String("221B ALARM: movement at ") + clockText() + battText(), true);
+    if (!alertsMuted()) meshSend(String("221B ALARM: movement at ") + clockText() + battText(), true);
   }
 }
 

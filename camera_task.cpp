@@ -74,6 +74,9 @@ static void applyNow() {
   s->set_special_effect(s, live.night && cfg.nightBW ? 2 : 0);  // 2 = grayscale
 }
 
+static char lastPhoto[96] = "";  // first photo of the latest burst, for the "last" command
+String cameraLastPhoto() { portENTER_CRITICAL(&reqMux); String s = lastPhoto; portEXIT_CRITICAL(&reqMux); return s; }
+
 void cameraRequestPhotos(const String &tag) {
   portENTER_CRITICAL(&reqMux);
   photosWanted = cfg.photoCount;
@@ -81,11 +84,11 @@ void cameraRequestPhotos(const String &tag) {
   portEXIT_CRITICAL(&reqMux);
 }
 
-void cameraRequestVideo(const String &tag) {
+void cameraRequestVideo(const String &tag, int seconds) {
   portENTER_CRITICAL(&reqMux);
   uint32_t now = millis();
   if (!videoWanted && !live.videoRec) { videoStarted = now; strlcpy(videoTag, tag.c_str(), sizeof(videoTag)); }
-  uint32_t until = now + cfg.videoSec * 1000UL;
+  uint32_t until = now + (seconds > 0 ? seconds : cfg.videoSec) * 1000UL;
   uint32_t cap = videoStarted + cfg.videoMaxSec * 1000UL;
   videoUntil = (int32_t)(until - cap) > 0 ? cap : until;
   videoWanted = true;
@@ -327,6 +330,7 @@ static void cameraTask(void *) {
       aviOpen = false;
       live.videoRec = false;
       logEvent("saved", "camera", "video " + avi.path.substring(avi.path.lastIndexOf('/') + 1) + " (" + String(avi.frames) + " frames, " + String(fps, 1) + " fps)");
+      if (avi.path.indexOf("_telegram-") >= 0) telegramSendFile(avi.path, "221B: the moving picture you asked for");
     }
 
     // photos
@@ -345,6 +349,7 @@ static void cameraTask(void *) {
       if (f) { f.write(fb->buf, fb->len); f.close(); }
       unlockSD();
       if (!ok) logEvent("error", "camera", "could not save photo");
+      if (ok && n == 1) { String p = photoBase + "_1.jpg"; portENTER_CRITICAL(&reqMux); strlcpy(lastPhoto, p.c_str(), sizeof(lastPhoto)); portEXIT_CRITICAL(&reqMux); }
       if (--photoIdx == 0) logEvent("saved", "camera", String(cfg.photoCount) + " photo(s) " + photoBase.substring(photoBase.lastIndexOf('/') + 1) + "_*.jpg");
       nextPhoto = now + cfg.photoIntervalMs;
     }

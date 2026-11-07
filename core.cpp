@@ -130,6 +130,24 @@ void logEvent(const String &kind, const String &who, const String &detail) {
   xSemaphoreGive(evLock);
 }
 
+// The last n case log lines as text, newest last ("21:58:10 Front door: went HIGH")
+String eventsText(int n) {
+  String o;
+  xSemaphoreTake(evLock, portMAX_DELAY);
+  for (int i = max(0, evCount - n); i < evCount; i++) {
+    const Ev &e = events[i];
+    o += (e.time.length() > 11 ? e.time.substring(11) : e.time) + " " + e.who + ": " + e.detail.substring(0, 90) + "\n";
+  }
+  xSemaphoreGive(evLock);
+  return o.length() ? o : String("nothing logged yet");
+}
+
+// "mute": keep recording, but send no alerts until then (0 = not muted)
+static uint32_t muteUntil = 0;
+void muteFor(int minutes) { muteUntil = minutes > 0 ? millis() + minutes * 60000UL : 0; if (minutes > 0 && !muteUntil) muteUntil = 1; }
+int muteLeftMin() { return muteUntil && (int32_t)(muteUntil - millis()) > 0 ? (int32_t)(muteUntil - millis()) / 60000 + 1 : 0; }
+bool alertsMuted() { return muteLeftMin() > 0; }
+
 void flushEvents() {
   static uint32_t lastFree = 0;
   // Called from the web loop: never wait for a busy card, or the web page stalls. Try again next second.
@@ -274,6 +292,7 @@ void raiseEvent(Source src, const String &who, const String &detail) {
   if (a.siren) sirenSound(cfg.sirenSec, String(who) + " - " + detail);
   if (a.photo) cameraRequestPhotos(tag);
   if (a.video) cameraRequestVideo(tag);
+  if (alertsMuted() && src != SRC_TEST) a.notify = false;  // "mute": recorded, but no alerts
   if (a.notify && cfg.meshEn) meshSend(String("221B: ") + who + " - " + detail + " at " + clockText() + battText(), false);
   if (a.notify) telegramAlert(String("\xF0\x9F\x95\xB5 221B: ") + who + " - " + detail + "\n" + clockText() + "\n" + sensorSnapshot(), true, src == SRC_TEST);
 }

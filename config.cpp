@@ -108,8 +108,8 @@ void buildFields() {
   add(g, "tgPhoto", "Attach a photo", 'b', &cfg.tgPhoto);
   add(g, "tgGapSec", "At most one alert every (s)", 'i', &cfg.tgGapSec, 0, 3600);
   add(g, "tgCmdEn", "Two-way: accept commands from your chat", 'b', &cfg.tgCmdEn, 0, 0, nullptr,
-      "Send the bot status, arm, disarm, ring, quiet, snooze 30, photo, sleep or help (with or without /). Only your own chat ID is obeyed, so no PIN is needed. "
-      "Photo sends you a picture. Keeps one connection to Telegram open (about 40 KB of memory).");
+      "Send the bot status, arm (arm 2h), disarm (disarm 30), mute 1h, unmute, photo, last, audio 5, video 5, log, ring, quiet, sleep or help (with or without /), or tap the buttons. Only your own chat ID is obeyed, so no PIN is needed. "
+      "Photo, audio and video are saved to the card and sent to you. Keeps one connection to Telegram open (about 40 KB of memory).");
 
   g = "The Camera Obscura";
   static String frameOpts = String(FRAMESIZE_QVGA) + ":320x240|" + FRAMESIZE_CIF + ":400x296|" + FRAMESIZE_VGA +
@@ -219,7 +219,7 @@ void buildFields() {
   add(g, "meshGapSec", "At most one LoRa text every (s)", 'i', &cfg.meshGapSec, 5, 3600, nullptr,
       "LoRa is slow and shared. One minute keeps the channel friendly.");
   add(g, "meshCmdEn", "Two-way: accept commands over LoRa", 'b', &cfg.meshCmdEn, 0, 0, nullptr,
-      "Needs the ESP RX pin wired to the radio's TX. Text the channel just the word: status, arm, disarm, ring, quiet, snooze 30, photo, sleep or help "
+      "Needs the ESP RX pin wired to the radio's TX. Text the channel just the word: status, arm (arm 2h), disarm (disarm 30), mute 1h, unmute, log, ring, quiet, photo, audio, video, sleep or help "
       "(with a PIN set: PIN status). The camera answers right away. "
       "Use a private Meshtastic channel with your own key: anyone on the default channel could read these texts.");
   add(g, "meshPin", "Command PIN (optional)", 'w', cfg.meshPin, 0, sizeof(cfg.meshPin), nullptr,

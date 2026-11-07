@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.11.0"
+#define FW_VERSION "3.12.0"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -211,7 +211,7 @@ bool cameraInit();
 void cameraApplyConfig();
 void cameraStart();
 void cameraRequestPhotos(const String &tag);
-void cameraRequestVideo(const String &tag);
+void cameraRequestVideo(const String &tag, int seconds = 0);  // 0 = the configured clip length
 bool cameraSnapshot(std::vector<uint8_t> &out);
 String motionGridJson();
 
@@ -230,6 +230,13 @@ bool telegramReady();
 void telegramAlert(const String &text, bool withPhoto, bool force);
 String telegramFindChat();
 void telegramPhotoNow(const String &caption);
+void telegramSendFile(const String &path, const String &caption);
+void telegramSendPhotoFile(const String &path, const String &caption);
+String cameraLastPhoto();
+String eventsText(int n);
+void muteFor(int minutes);
+int muteLeftMin();
+bool alertsMuted();  // a WAV or AVI from the card, sent as a file
 bool remoteCommand(String text, const String &who, void (*out)(const String &));
 
 // ---------- presence.cpp ----------

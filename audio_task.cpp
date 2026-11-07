@@ -42,6 +42,7 @@ static void wavWriter(void *arg) {
   unlockSD();
   logEvent(ok ? "saved" : "error", "microphone",
            String(ok ? "audio " : "could not save ") + job->path.substring(job->path.lastIndexOf('/') + 1) + " (" + String(job->samples / (float)SAMPLE_RATE, 1) + " s)");
+  if (ok && job->path.indexOf("_telegram-") >= 0) telegramSendFile(job->path, "221B: what Holmes heard");
   free(job->buf);
   delete job;
   vTaskDelete(nullptr);
