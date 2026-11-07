@@ -279,6 +279,13 @@ static void cameraTask(void *) {
     camera_fb_t *fb = esp_camera_fb_get();
     if (!fb) {
       if (++failures == 5) logEvent("error", "camera", "no picture from the camera");
+      if (failures % 15 == 0) {  // still nothing: start the camera again (it can stay stuck after a soft restart)
+        esp_camera_deinit();
+        delay(300);
+        bool ok = cameraInit();
+        logEvent(ok ? "camera" : "error", "camera", ok ? "camera restarted after no pictures" : "camera restart failed");
+        bgValid = false;
+      }
       delay(20);
       continue;
     }

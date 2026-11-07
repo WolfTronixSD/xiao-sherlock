@@ -28,11 +28,11 @@ static void countBoot() {
   p.end();
   switch (esp_reset_reason()) {
     case ESP_RST_POWERON:  live.resetWhy = "power on"; break;
-    case ESP_RST_SW:       live.resetWhy = "restart (web, update or watchdog)"; break;
+    case ESP_RST_SW:       live.resetWhy = "software restart (web page, update or stuck-page guard)"; break;
     case ESP_RST_PANIC:    live.resetWhy = "crash"; break;
-    case ESP_RST_INT_WDT:
-    case ESP_RST_TASK_WDT:
-    case ESP_RST_WDT:      live.resetWhy = "watchdog"; break;
+    case ESP_RST_INT_WDT:  live.resetWhy = "watchdog (interrupts blocked)"; break;
+    case ESP_RST_TASK_WDT: live.resetWhy = "watchdog (a task hung)"; break;
+    case ESP_RST_WDT:      live.resetWhy = "watchdog (chip hung, often a power dip)"; break;
     case ESP_RST_BROWNOUT: live.resetWhy = "power dip (brownout)"; break;
     case ESP_RST_DEEPSLEEP:live.resetWhy = "woke from sleep"; break;
     case ESP_RST_EXT:      live.resetWhy = "reset button"; break;

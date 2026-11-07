@@ -408,6 +408,11 @@ void webStart() {
   ROUTE("/api/settime", HTTP_POST, { handleSetTime(); });
   ROUTE("/api/mesh/test", HTTP_POST, { if (!cfg.meshEn || cfg.meshTx < 0) { server.send(400, "text/plain", "Enable the Pigeon Post and set the TX pin first, then save."); return; } meshSend("221B test: Inspector Lestrade checks the pigeons. All in order." + battText(), true); server.send(200, "text/plain", "Sent - look at your Meshtastic app"); });
   ROUTE("/api/siren", HTTP_POST, { if (server.arg("on") == "1") sirenSound(cfg.sirenSec, "rung from the web page"); else sirenStop("silenced from the web page"); server.send(200, "text/plain", live.siren ? "1" : "0"); });
+  ROUTE("/api/radarmm", HTTP_POST, {  // the trigger slider on The Scene: no pin restart, so the radar keeps tracking
+    cfg.radarMaxMm = constrain(server.arg("mm").toInt(), 100, 6000);
+    saveConfig();
+    server.send(200, "text/plain", String(cfg.radarMaxMm));
+  });
   ROUTE("/api/test", HTTP_POST, { raiseEvent(SRC_TEST, "Inspector Lestrade", "manual test from the web page"); server.send(200, "text/plain", "ok"); });
   ROUTE("/api/tg/test", HTTP_POST, { if (!telegramReady()) { server.send(400, "text/plain", "Enable Telegram and fill in token and chat ID first, then save."); return; } telegramAlert("221B test: Inspector Lestrade checks the telegraph. All in order.", true, true); server.send(200, "text/plain", "Telegram sent - check your phone"); });
   ROUTE("/api/tg/findchat", HTTP_POST, server.send(200, "text/plain", telegramFindChat()));

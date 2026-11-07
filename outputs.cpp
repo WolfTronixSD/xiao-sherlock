@@ -61,7 +61,8 @@ static void bellTick() {
     }
     if (tonePin != cfg.sirenPin) {
       toneOff();
-      if (!ledcAttach(cfg.sirenPin, 2700, 8)) return;
+      // channel 6 runs on LEDC timer 3: the camera clock owns channel 0 / timer 0, and ledcAttach() would take it
+      if (!ledcAttachChannel(cfg.sirenPin, 2700, 8, 6)) return;
       tonePin = cfg.sirenPin;
     }
     ledcWriteTone(tonePin, hz);

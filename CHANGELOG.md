@@ -2,6 +2,12 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.6 (2026-11-07): The Problem of the Vanishing Card
+- Radar trigger distance slider on The Scene, saved at once without restarting the radar
+- Fix: the piezo tone could take the camera clock (LEDC timer 0) and stop the pictures
+- The camera restarts itself if no pictures arrive, and a missing SD card is retried every minute
+- Restarts say which watchdog fired; a normal software restart is no longer shown in red
+
 ## 3.5 (2026-11-06): The Adventure of the Singing Piezo
 - Alarm bell: "Piezo wail" and "Piezo beeps" sounds drive a passive piezo with a tone (LEDC), so it sounds instead of clicking.
 - Tripwire debounce is adjustable (Baker Street HQ, default 50 ms) and the pins are read every 5 ms.
