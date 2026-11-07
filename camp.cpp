@@ -74,7 +74,7 @@ static void reply(const String &t) { meshSend("221B: " + t, true); }  // replies
 static void loraReply(const String &t) { reply(t); }
 
 // Shared by LoRa and Telegram: "via" is "LoRa" or "Telegram", out() sends the answer back the same way
-static void runCommand(const String &cmd, const String &arg, const String &who, const char *via, void (*out)(const String &)) {
+static void runCommand(String cmd, const String &arg, const String &who, const char *via, void (*out)(const String &)) {
   auto reply = out;
   String by = String(via) + (who.length() ? " (" + who + ")" : String(""));
   logEvent(strcmp(via, "LoRa") ? "telegram" : "mesh", by, "command: " + cmd + (arg.length() ? " " + arg : ""));
