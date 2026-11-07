@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.12.1 (2026-11-07): Room to breathe
+- Memory: Telegram's encryption buffers (about 40 KB per connection) now live in the PSRAM. With the bot listening for commands they sat in the internal RAM, which dropped to 0 KB and made saving files fail at times.
+
 ## 3.12.0 (2026-11-07): Pictures by telegraph
 - Telegram `photo` also saves the picture to the SD card (`..._telegram-photo.jpg`).
 - New commands `audio [s]` (default 5 s, up to 30) and `video [s]` (default 5 s, up to 20). From Telegram the clip is saved to the card and sent to your chat as a file; over LoRa it is only saved.
