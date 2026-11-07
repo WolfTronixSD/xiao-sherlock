@@ -105,7 +105,7 @@ String irregularsJson() {
     char id[9];
     snprintf(id, sizeof(id), "%08lx", (unsigned long)s.id);
     j += String(n++ ? "," : "") + "{\"k\":\"" + "Wi-Fi" + "\",\"id\":\"" + String(id).substring(0, 4) +
-         "\",\"r\":" + s.rssi + ",\"ago\":" + (t - s.last) / 1000 + ,\"for\":" + (s.last - s.first) / 1000 +
+         "\",\"r\":" + s.rssi + ",\"ago\":" + (t - s.last) / 1000 + ",\"for\":" + (s.last - s.first) / 1000 +
          ",\"new\":" + (t - s.first) / 1000 + ",\"m\":" + (s.mine ? "1" : "0") + "}";
   }
   return j + "]}";
