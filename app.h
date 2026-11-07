@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.13.0"
+#define FW_VERSION "3.14.0"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -76,13 +76,20 @@ struct Config {
   int  sonarEcho = 4;
   int  sonarCm = 100;
   Actions sonarAct = {true, false, false, true};
-  // the Seismograph: MPU6050 tilt and shock (I2C)
+  // the Seismograph: MPU6050 or LIS3DH tilt and shock (I2C)
   bool shakeEn = false;
   int  shakeSda = 3;        // D2
   int  shakeScl = 4;        // D3
   int  shakeTiltDeg = 3;    // alarm when tilted this much from the resting angle (0 = off)
   int  shakeShockMg = 150;  // alarm on a jolt stronger than this (milli-g, 0 = off)
   Actions shakeAct = {true, true, true, true};
+  // the LIS3DH's three spare analog inputs (0.9-1.8 V each)
+  bool auxLight = false;    // ADC1: an LDR sets the light level for the night watch instead of the picture
+  bool battLis = false;     // ADC2: battery voltage (battMul is the divider ratio)
+  bool carEn = false;       // ADC3: the car's 12 V
+  int  carMul = 1010;       // divider ratio x100 (91k over 10k = 1010)
+  int  carOnMv = 13300;     // over this the engine is running (alternator charging)
+  int  carLowMv = 11800;    // under this the car battery is low
   // the Baker Street Irregulars: phones nearby (Wi-Fi probe requests)
   bool irrEn = false;
   int  irrRssi = -80;       // only count devices stronger than this (dBm)
@@ -151,7 +158,8 @@ struct LiveState {
   RadarTarget   radar[3] = {};
   volatile bool radarSeen = false;   // got frames from the radar
   volatile int  sonarCm = -1;
-  volatile int  shakeOK = -1;        // MPU6050: -1 off, 0 not found, 1 working
+  volatile int  shakeOK = -1;        // MPU6050 or LIS3DH: -1 off, 0 not found, 1 working
+  volatile int  auxMv[3] = {-1, -1, -1};  // LIS3DH spare inputs in mV at the pin (-1 not read)
   volatile float tiltDeg = 0;        // tilt from the resting angle
   volatile float shockG = 0;         // biggest jolt in the last 2 s
   volatile int  phoneHome = -1;      // -1 not watched, 0 away, 1 home
@@ -233,6 +241,9 @@ void audioRequest(const String &tag, int seconds);
 // ---------- sensors.cpp ----------
 void sensorsApplyConfig();
 void shakeLevelNow();  // take the current angle as the resting angle
+const char *shakeChip();  // "LIS3DH", "MPU6050", or both names while none is found
+int carMv();           // the car's 12 V in mV (-1 not measured)
+bool ldrLight();       // the light level comes from the LDR, not from the picture
 void sensorsStart();
 
 // ---------- telegram.cpp ----------

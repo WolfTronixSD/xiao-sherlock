@@ -249,6 +249,7 @@ void meshCmdStart() { xTaskCreatePinnedToCore(meshCmdTask, "pigeon", 4096, nullp
 
 // ---------- battery ----------
 int batteryMv() {
+  if (cfg.battLis) return live.auxMv[1] < 0 ? -1 : live.auxMv[1] * cfg.battMul / 100;  // LIS3DH ADC2
   if (cfg.battPin < 0) return -1;
   uint32_t sum = 0;
   for (int i = 0; i < 8; i++) sum += analogReadMilliVolts(cfg.battPin);

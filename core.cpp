@@ -201,6 +201,7 @@ String sensorSnapshot() {
   if (cfg.sonarEn) s += ", sonar " + String(live.sonarCm) + " cm";
   if (cfg.shakeEn && live.shakeOK == 1) s += ", tilt " + String(live.tiltDeg, 1) + " deg, jolt " + String(live.shockG, 2) + " g";
   if (live.light >= 0) s += ", light " + String(live.light) + (live.night ? " (night)" : "");
+  if (carMv() > 0) s += ", car " + String(carMv() / 1000.0f, 1) + " V";
   return s;
 }
 

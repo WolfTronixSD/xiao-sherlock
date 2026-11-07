@@ -108,6 +108,11 @@ static void handleStatus() {
   d["shock"] = (float)live.shockG;
   d["tiltLim"] = cfg.shakeTiltDeg;
   d["shockLim"] = cfg.shakeShockMg;
+  d["shakeChip"] = shakeChip();
+  JsonArray ax = d["auxMv"].to<JsonArray>();
+  for (int i = 0; i < 3; i++) ax.add(live.auxMv[i]);
+  d["carMv"] = carMv();
+  d["ldr"] = ldrLight();
   String s;
   serializeJson(d, s);
   sendJson(s);

@@ -49,6 +49,7 @@ static void setupPins() {
   static bool wireOn = false;
   if (wireOn) { Wire.end(); wireOn = false; }
   live.shakeOK = -1;
+  for (auto &m : live.auxMv) m = -1;
   if (cfg.shakeEn) {
     if (claim(cfg.shakeSda, "seismograph") && claim(cfg.shakeScl, "seismograph")) {
       wireOn = Wire.begin(cfg.shakeSda, cfg.shakeScl, 400000);
@@ -154,23 +155,114 @@ static void pollRadar() {
   }
 }
 
-// ---------- MPU6050 (the Seismograph) ----------
+// ---------- MPU6050 or LIS3DH (the Seismograph) ----------
 // Read 50 times a second. Gravity is followed slowly (about 1 s); a jolt is the difference between a reading and
 // that slow gravity, tilt is the angle between the slow gravity and the resting angle taken at arming.
-static const uint8_t MPU = 0x68;
+// Whichever chip answers is used: MPU6050 at 0x68/0x69, LIS3DH at 0x18/0x19 (WHO_AM_I 0x33). Both run at +-4 g,
+// where one count of the 16-bit reading is 1/8192 g.
+static uint8_t accAddr = 0;
+static bool accLis = false;
+static const char *accName = "accelerometer";
 static volatile bool levelWanted = true;
 void shakeLevelNow() { levelWanted = true; }
+const char *shakeChip() { return live.shakeOK == 1 ? accName : "MPU6050 or LIS3DH"; }
 
-static bool mpuWrite(uint8_t reg, uint8_t v) {
-  Wire.beginTransmission(MPU); Wire.write(reg); Wire.write(v);
+static bool accWrite(uint8_t addr, uint8_t reg, uint8_t v) {
+  Wire.beginTransmission(addr); Wire.write(reg); Wire.write(v);
   return Wire.endTransmission() == 0;
 }
 
-static bool mpuRead(float a[3]) {
-  Wire.beginTransmission(MPU); Wire.write(0x3B);
-  if (Wire.endTransmission(false) != 0 || Wire.requestFrom(MPU, (uint8_t)6) != 6) return false;
-  for (int i = 0; i < 3; i++) { int16_t v = (Wire.read() << 8) | Wire.read(); a[i] = v / 8192.0f; }  // +-4 g range
+static int accReadReg(uint8_t addr, uint8_t reg) {
+  Wire.beginTransmission(addr); Wire.write(reg);
+  if (Wire.endTransmission(false) != 0 || Wire.requestFrom(addr, (uint8_t)1) != 1) return -1;
+  return Wire.read();
+}
+
+static bool accRead(float a[3]) {
+  Wire.beginTransmission(accAddr); Wire.write(accLis ? 0xA8 : 0x3B);  // LIS3DH: 0x28 with auto-increment
+  if (Wire.endTransmission(false) != 0 || Wire.requestFrom(accAddr, (uint8_t)6) != 6) return false;
+  for (int i = 0; i < 3; i++) {
+    uint8_t b1 = Wire.read(), b2 = Wire.read();
+    int16_t v = accLis ? (int16_t)((b2 << 8) | b1) : (int16_t)((b1 << 8) | b2);  // LIS3DH is little-endian
+    a[i] = v / 8192.0f;
+  }
   return true;
+}
+
+// The three spare inputs: 10 bits, about -32512 at 1.8 V to +32512 at 0.9 V (reversed).
+static bool auxRead(int mv[3]) {
+  Wire.beginTransmission(accAddr); Wire.write(0x88);  // OUT_ADC1_L with auto-increment
+  if (Wire.endTransmission(false) != 0 || Wire.requestFrom(accAddr, (uint8_t)6) != 6) return false;
+  for (int i = 0; i < 3; i++) {
+    uint8_t lo = Wire.read(), hi = Wire.read();
+    int16_t v = (int16_t)((hi << 8) | lo);
+    mv[i] = 1350 - (int32_t)v * 450 / 32512;
+  }
+  return true;
+}
+
+int carMv() {
+  if (!cfg.carEn || live.auxMv[2] < 0) return -1;
+  return live.auxMv[2] * cfg.carMul / 100;
+}
+
+bool ldrLight() { return cfg.auxLight && live.auxMv[0] >= 0; }
+
+// once a second: average the spare inputs, turn ADC1 into a light level, watch the car's 12 V
+static void auxTick(uint32_t now) {
+  static uint32_t last = 0, onSince = 0, lowSince = 0, lastLow = 0;
+  static int32_t sum[3];
+  static int n = 0;
+  static bool running = false;
+  int mv[3];
+  if (!accLis || !auxRead(mv)) return;
+  for (int i = 0; i < 3; i++) sum[i] += mv[i];
+  n++;
+  if (now - last < 1000) return;
+  last = now;
+  for (int i = 0; i < 3; i++) { live.auxMv[i] = sum[i] / n; sum[i] = 0; }
+  n = 0;
+  // the LDR: 0.9 V (dark) .. 1.8 V (bright) becomes 0..255, the same scale as the picture's brightness
+  if (cfg.auxLight) live.light = constrain((live.auxMv[0] - 900) * 255 / 900, 0, 255);
+  int car = carMv();
+  if (car < 0) return;
+  String volts = String(car / 1000.0f, 1) + " V";
+  if (car > cfg.carOnMv) {
+    if (!onSince) onSince = now;
+    if (!running && now - onSince > 3000) {
+      running = true;
+      logEvent("sensor", "car", "engine running (" + volts + ")");
+      raiseEvent(SRC_SHAKE, "ignition", "the car's voltage rose to " + volts + " - the engine was started");
+    }
+  } else if (car < cfg.carOnMv - 300) {
+    onSince = 0;
+    if (running) { running = false; logEvent("sensor", "car", "engine off (" + volts + ")"); }
+  }
+  if (car > 3000 && car < cfg.carLowMv) {
+    if (!lowSince) lowSince = now;
+    if (now - lowSince > 60000 && (!lastLow || now - lastLow > 6 * 3600000UL)) {
+      lastLow = now;
+      String t = "221B: the car battery is low, " + volts;
+      logEvent("warning", "car", t);
+      if (!alertsMuted()) { telegramAlert(t, false, false); if (cfg.meshEn) meshSend(t, false); }
+    }
+  } else lowSince = 0;
+}
+
+static bool accFind() {
+  static const uint8_t lis[] = {0x18, 0x19}, mpu[] = {0x68, 0x69};
+  for (uint8_t ad : lis)
+    if (accReadReg(ad, 0x0F) == 0x33) {
+      // 100 Hz, all axes; block update, +-4 g, high resolution; spare analog inputs on (ADC3 external, not temperature)
+      if (accWrite(ad, 0x20, 0x57) && accWrite(ad, 0x23, 0x98) && accWrite(ad, 0x1F, 0x80)) { accAddr = ad; accLis = true; accName = "LIS3DH"; delay(20); return true; }
+    }
+  for (uint8_t ad : mpu) {
+    int who = accReadReg(ad, 0x75);
+    if (who < 0) continue;
+    // wake up, 44 Hz low-pass, +-4 g
+    if (accWrite(ad, 0x6B, 0x00) && accWrite(ad, 0x1A, 0x03) && accWrite(ad, 0x1C, 0x08)) { accAddr = ad; accLis = false; accName = "MPU6050"; delay(20); return true; }
+  }
+  return false;
 }
 
 static float angleDeg(const float a[3], const float b[3]) {
@@ -190,9 +282,9 @@ static void pollShake() {
   if (live.shakeOK == 0) {  // find and wake the chip, then retry every 10 s
     if (now - lastTry < 10000 && lastTry) return;
     lastTry = now;
-    if (!mpuWrite(0x6B, 0x00) || !mpuWrite(0x1A, 0x03) || !mpuWrite(0x1C, 0x08) || !mpuRead(grav)) {
+    if (!accFind() || !accRead(grav)) {
       static uint32_t lastLog = 0;
-      if (!lastLog || now - lastLog > 600000UL) { lastLog = now; logEvent("warning", "seismograph", "no MPU6050 found on " + pinName(cfg.shakeSda) + "/" + pinName(cfg.shakeScl) + " - check the wiring"); }
+      if (!lastLog || now - lastLog > 600000UL) { lastLog = now; logEvent("warning", "seismograph", "no MPU6050 or LIS3DH found on " + pinName(cfg.shakeSda) + "/" + pinName(cfg.shakeScl) + " - check the wiring"); }
       return;
     }
     live.shakeOK = 1;
@@ -200,13 +292,15 @@ static void pollShake() {
     memcpy(rest, grav, sizeof(rest));
     levelWanted = true;
     warmUntil = now + 2000;
-    logEvent("sensor", "seismograph", "MPU6050 found and running");
+    logEvent("sensor", "seismograph", String(accName) + " found at 0x" + String(accAddr, HEX) + " and running");
   }
   if (now - lastRead < 20) return;
   lastRead = now;
   float a[3];
-  if (!mpuRead(a)) { if (++fails > 25) { live.shakeOK = 0; logEvent("warning", "seismograph", "MPU6050 stopped answering"); } return; }
+  if (!accRead(a)) { if (++fails > 25) { live.shakeOK = 0; for (auto &m : live.auxMv) m = -1; logEvent("warning", "seismograph", String(accName) + " stopped answering"); } return; }
   fails = 0;
+  static uint32_t lastAux = 0;
+  if (accLis && now - lastAux >= 100) { lastAux = now; auxTick(now); }  // 10 samples a second
   // jolt: how far this reading is from the slow gravity
   float jx = a[0] - grav[0], jy = a[1] - grav[1], jz = a[2] - grav[2];
   float jolt = sqrtf(jx * jx + jy * jy + jz * jz);
@@ -224,11 +318,11 @@ static void pollShake() {
     for (int i = 0; i < 3; i++) rest[i] += (grav[i] - rest[i]) * 0.00003f;
   if ((int32_t)(now - warmUntil) < 0 || levelWanted) return;
   if (cfg.shakeShockMg > 0 && jolt * 1000 > cfg.shakeShockMg)
-    raiseEvent(SRC_SHAKE, "MPU6050", "a jolt of " + String(jolt, 2) + " g (limit " + String(cfg.shakeShockMg / 1000.0f, 2) + " g)");
+    raiseEvent(SRC_SHAKE, accName, "a jolt of " + String(jolt, 2) + " g (limit " + String(cfg.shakeShockMg / 1000.0f, 2) + " g)");
   if (cfg.shakeTiltDeg > 0 && tilt > cfg.shakeTiltDeg) {
     if (!tiltSince) tiltSince = now;
     if (now - tiltSince > 1000) {
-      raiseEvent(SRC_SHAKE, "MPU6050", "tilted " + String(tilt, 1) + " degrees (limit " + String(cfg.shakeTiltDeg) + ") - jacked up or towed?");
+      raiseEvent(SRC_SHAKE, accName, "tilted " + String(tilt, 1) + " degrees (limit " + String(cfg.shakeTiltDeg) + ") - jacked up or towed?");
       tiltSince = now;  // the cooldown keeps it from repeating too often
     }
   } else tiltSince = 0;

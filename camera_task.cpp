@@ -212,7 +212,7 @@ static void analyse(camera_fb_t *fb) {
   }
   uint32_t sum = 0;
   for (int i = 0; i < n; i++) sum += grey[i];
-  live.light = sum / n;  // for the night watch
+  if (!ldrLight()) live.light = sum / n;  // for the night watch (unless an LDR on the LIS3DH does it)
   if (!cfg.motionEn) { bgValid = false; return; }
   if (!bgValid) { memcpy(bg, grey, n); memset(mask, 0, n); bgValid = true; return; }
 
