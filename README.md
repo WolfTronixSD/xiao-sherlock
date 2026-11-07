@@ -93,6 +93,8 @@ For road trips and camping: battery power, no Wi-Fi, no phone signal.
 
 In the Meshtastic app on the radio: *Module config > Serial*: enabled, mode **TEXTMSG**, baud **38400**, and the RX/TX pins you wired. Every alert becomes a text on the primary channel, so any radio or phone on that channel gets it. If you use D6/D7 for the radio, turn the LD2450 radar off.
 
+**Two-way (commands from your phone):** wire the radio's TX pin to the ESP RX pin too (e.g. Heltec GPIO 48 → XIAO D5), switch on *Two-way: accept commands over LoRa* in The Pigeon Post and set a Command PIN. Then text `221B <PIN> status` (or arm, disarm, ring, quiet, snooze 30, photo, sleep, help) on the channel. Put both radios on a private channel with your own key.
+
 **PIR:** output to D1 (the default tripwire 2 "PIR" and the default wake pin). Only D0-D5 can wake the chip.
 
 **Battery voltage (optional):** two equal resistors (e.g. 2 x 100k) from battery + to GND, middle to a free pin (e.g. D0); set *Battery voltage pin* and leave the ratio at 200.

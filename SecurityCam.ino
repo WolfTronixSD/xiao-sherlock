@@ -122,6 +122,7 @@ void setup() {
   outputsStart();
   irregularsStart();
   campStart();
+  meshCmdStart();
   janitorStart();
   logEvent("start", "Holmes", String("on duty, ") + (cfg.armed ? "ARMED" : "disarmed") + ", firmware " FW_VERSION +
            ", restart #" + live.boots + " (" + live.resetWhy + ")");
