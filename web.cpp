@@ -113,6 +113,7 @@ static void handleStatus() {
   d["shakeChip"] = shakeChip();
   d["i2cBus"] = live.i2cBus;
   d["i2cScan"] = live.i2cScan;
+  d["i2cStuck"] = live.i2cStuck;
   JsonArray ax = d["auxMv"].to<JsonArray>();
   for (int i = 0; i < 3; i++) ax.add(live.auxMv[i]);
   d["carMv"] = carMv();

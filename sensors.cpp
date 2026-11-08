@@ -17,6 +17,29 @@ static bool radarActive = false;
 void sensorsApplyConfig() { dirty = true; }
 
 // Disable anything whose pins clash with an earlier sensor, and set the pins up
+// I2C bus recovery: a chip that was cut off mid-byte (reset, pin swap) can hold SDA low for ever.
+// Clock SCL up to 9 times until it lets go, then send a STOP. Returns true if SDA is still stuck low.
+static bool busRecover(int sda, int scl) {
+  pinMode(sda, INPUT_PULLUP);
+  pinMode(scl, OUTPUT_OPEN_DRAIN);
+  digitalWrite(scl, HIGH);
+  delayMicroseconds(10);
+  if (digitalRead(sda) == HIGH) return false;
+  for (int i = 0; i < 9 && digitalRead(sda) == LOW; i++) {
+    digitalWrite(scl, LOW);  delayMicroseconds(5);
+    digitalWrite(scl, HIGH); delayMicroseconds(5);
+  }
+  pinMode(sda, OUTPUT_OPEN_DRAIN);  // STOP: SDA low -> high while SCL is high
+  digitalWrite(sda, LOW);  delayMicroseconds(5);
+  digitalWrite(sda, HIGH); delayMicroseconds(5);
+  pinMode(sda, INPUT_PULLUP);
+  bool stuck = digitalRead(sda) == LOW;
+  logEvent(stuck ? "warning" : "info", "seismograph", stuck ?
+           "bus recovery: SDA on " + pinName(sda) + " is still held at 0 V - power-cycle the sensor, check the wire goes to " + pinName(sda) + " and is not touching GND" :
+           "bus recovery: SDA on " + pinName(sda) + " was stuck low, freed it");
+  return stuck;
+}
+
 static void setupPins() {
   std::vector<int> used;
   String warn;
@@ -56,9 +79,11 @@ static void setupPins() {
   live.shakeOK = -1;
   live.i2cBus = -1;
   live.i2cScan = "";
+  live.i2cStuck = false;
   for (auto &m : live.auxMv) m = -1;
   if (cfg.shakeEn) {
     if (claim(cfg.shakeSda, "seismograph") && claim(cfg.shakeScl, "seismograph")) {
+      live.i2cStuck = busRecover(cfg.shakeSda, cfg.shakeScl);
       busp = &Wire;
       wireOn = Wire.begin(cfg.shakeSda, cfg.shakeScl, 100000);
       if (!wireOn) { busp = &Wire1; wireOn = Wire1.begin(cfg.shakeSda, cfg.shakeScl, 100000); }
@@ -303,11 +328,17 @@ static void pollShake() {
           if (bus.endTransmission() == 0) seen += (seen.length() ? " 0x" : "0x") + String(ad, HEX);
         }
       live.i2cScan = seen;
+      // nothing answers and SDA sits at 0 V: try to free the bus, then start it again
+      if (live.i2cBus == 1 && !seen.length() && digitalRead(cfg.shakeSda) == LOW) {
+        bus.end();
+        live.i2cStuck = busRecover(cfg.shakeSda, cfg.shakeScl);
+        if (!bus.begin(cfg.shakeSda, cfg.shakeScl, 100000)) live.i2cBus = 0;
+      }
       static uint32_t lastLog = 0;
       if (!lastLog || now - lastLog > 600000UL) {
         lastLog = now;
         logEvent("warning", "seismograph", "no MPU6050 or LIS3DH found on " + pinName(cfg.shakeSda) + "/" + pinName(cfg.shakeScl) +
-                 (live.i2cBus != 1 ? String(" - the I2C bus did not start") : seen.length() ? " - answering: " + seen : String(" - nothing answers: check power, solder and SDA/SCL")));
+                 (live.i2cBus != 1 ? String(" - the I2C bus did not start") : live.i2cStuck ? String(" - SDA is held at 0 V (power-cycle the sensor, check the SDA wire and for a short to GND)") : seen.length() ? " - answering: " + seen : String(" - nothing answers: check power, solder and SDA/SCL")));
       }
       return;
     }
