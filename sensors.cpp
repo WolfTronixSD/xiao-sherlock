@@ -3,6 +3,9 @@
 #include "app.h"
 #include <Wire.h>
 
+// The camera owns I2C port 0 for its own sensor (SCCB), so the Seismograph uses port 1.
+static TwoWire &bus = Wire1;
+
 static volatile bool dirty = true;
 static int stable[MAX_INPUTS], last[MAX_INPUTS];  // tripwire debounce state
 static uint32_t changedAt[MAX_INPUTS];
@@ -47,13 +50,14 @@ static void setupPins() {
     } else cfg.radarEn = false;
   }
   static bool wireOn = false;
-  if (wireOn) { Wire.end(); wireOn = false; }
+  if (wireOn) { bus.end(); wireOn = false; }
   live.shakeOK = -1;
   for (auto &m : live.auxMv) m = -1;
   if (cfg.shakeEn) {
     if (claim(cfg.shakeSda, "seismograph") && claim(cfg.shakeScl, "seismograph")) {
-      wireOn = Wire.begin(cfg.shakeSda, cfg.shakeScl, 400000);
-      live.shakeOK = 0;  // shakeBegin() looks for the chip
+      wireOn = bus.begin(cfg.shakeSda, cfg.shakeScl, 100000);
+      if (!wireOn) logEvent("warning", "seismograph", "could not start the I2C bus on " + pinName(cfg.shakeSda) + "/" + pinName(cfg.shakeScl));
+      live.shakeOK = 0;  // pollShake() looks for the chip
     } else cfg.shakeEn = false;
   }
   // outputs (outputs.cpp drives them): release a pin that is no longer used, claim the new one
@@ -168,21 +172,21 @@ void shakeLevelNow() { levelWanted = true; }
 const char *shakeChip() { return live.shakeOK == 1 ? accName : "MPU6050 or LIS3DH"; }
 
 static bool accWrite(uint8_t addr, uint8_t reg, uint8_t v) {
-  Wire.beginTransmission(addr); Wire.write(reg); Wire.write(v);
-  return Wire.endTransmission() == 0;
+  bus.beginTransmission(addr); bus.write(reg); bus.write(v);
+  return bus.endTransmission() == 0;
 }
 
 static int accReadReg(uint8_t addr, uint8_t reg) {
-  Wire.beginTransmission(addr); Wire.write(reg);
-  if (Wire.endTransmission(false) != 0 || Wire.requestFrom(addr, (uint8_t)1) != 1) return -1;
-  return Wire.read();
+  bus.beginTransmission(addr); bus.write(reg);
+  if (bus.endTransmission(false) != 0 || bus.requestFrom(addr, (uint8_t)1) != 1) return -1;
+  return bus.read();
 }
 
 static bool accRead(float a[3]) {
-  Wire.beginTransmission(accAddr); Wire.write(accLis ? 0xA8 : 0x3B);  // LIS3DH: 0x28 with auto-increment
-  if (Wire.endTransmission(false) != 0 || Wire.requestFrom(accAddr, (uint8_t)6) != 6) return false;
+  bus.beginTransmission(accAddr); bus.write(accLis ? 0xA8 : 0x3B);  // LIS3DH: 0x28 with auto-increment
+  if (bus.endTransmission(false) != 0 || bus.requestFrom(accAddr, (uint8_t)6) != 6) return false;
   for (int i = 0; i < 3; i++) {
-    uint8_t b1 = Wire.read(), b2 = Wire.read();
+    uint8_t b1 = bus.read(), b2 = bus.read();
     int16_t v = accLis ? (int16_t)((b2 << 8) | b1) : (int16_t)((b1 << 8) | b2);  // LIS3DH is little-endian
     a[i] = v / 8192.0f;
   }
@@ -192,10 +196,10 @@ static bool accRead(float a[3]) {
 // The three spare inputs: 10 bits, two's complement around 1.2 V, 0.8 to 1.6 V (ST: "1200 mV +-400 mV").
 // Higher voltage gives a lower code (as in Adafruit's example); checked once real wiring is on.
 static bool auxRead(int mv[3]) {
-  Wire.beginTransmission(accAddr); Wire.write(0x88);  // OUT_ADC1_L with auto-increment
-  if (Wire.endTransmission(false) != 0 || Wire.requestFrom(accAddr, (uint8_t)6) != 6) return false;
+  bus.beginTransmission(accAddr); bus.write(0x88);  // OUT_ADC1_L with auto-increment
+  if (bus.endTransmission(false) != 0 || bus.requestFrom(accAddr, (uint8_t)6) != 6) return false;
   for (int i = 0; i < 3; i++) {
-    uint8_t lo = Wire.read(), hi = Wire.read();
+    uint8_t lo = bus.read(), hi = bus.read();
     int16_t v = (int16_t)((hi << 8) | lo);
     mv[i] = 1200 - (int32_t)v * 400 / 32768;
   }
