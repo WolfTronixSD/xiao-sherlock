@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.9 (2026-11-08): Who has the card
+- The case log names any task that keeps the SD card longer than 1 s, and the status shows the longest hold and the longest wait with the task names. A test event froze the camera loop for 5.6 s; this shows who held the card.
+
 ## 3.14.8 (2026-11-08): Keeping time
 - The Doctor's Report shows the camera's pace: pictures per second, the slowest wait for a picture and the slowest work (saving, motion, video) in the last 5 s. Seismograph videos had only one frame, which means the camera loop slowed to a picture every few seconds; this shows where the time goes.
 

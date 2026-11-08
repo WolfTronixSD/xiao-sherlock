@@ -629,6 +629,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.14.9','2026-11-08','Who has the card',['The case log names any task that keeps the SD card longer than 1 s, to find what freezes the camera']],
  ['3.14.8','2026-11-08','Keeping time',["Doctor's Report: Camera pace shows pictures per second and the slowest wait and work, to find why videos got only one frame"]],
  ['3.14.7','2026-11-08','Unstuck',['Seismograph: frees an I2C bus whose SDA line is stuck at 0 V (clocks SCL 9 times, then a STOP), at start and on every retry; says so if SDA stays low']],
  ['3.14.6','2026-11-08','Is anyone there?',["Doctor's Report: the Pigeon Post shows when the radio was last heard instead of a hopeful 'wired'"]],
