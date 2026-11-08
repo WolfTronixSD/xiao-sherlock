@@ -52,10 +52,13 @@ static void setupPins() {
   static bool wireOn = false;
   if (wireOn) { bus.end(); wireOn = false; }
   live.shakeOK = -1;
+  live.i2cBus = -1;
+  live.i2cScan = "";
   for (auto &m : live.auxMv) m = -1;
   if (cfg.shakeEn) {
     if (claim(cfg.shakeSda, "seismograph") && claim(cfg.shakeScl, "seismograph")) {
       wireOn = bus.begin(cfg.shakeSda, cfg.shakeScl, 100000);
+      live.i2cBus = wireOn ? 1 : 0;
       if (!wireOn) logEvent("warning", "seismograph", "could not start the I2C bus on " + pinName(cfg.shakeSda) + "/" + pinName(cfg.shakeScl));
       live.shakeOK = 0;  // pollShake() looks for the chip
     } else cfg.shakeEn = false;
@@ -288,8 +291,20 @@ static void pollShake() {
     if (now - lastTry < 10000 && lastTry) return;
     lastTry = now;
     if (!accFind() || !accRead(grav)) {
+      // scan the whole bus, so The Scene can show what (if anything) answers
+      String seen;
+      if (live.i2cBus == 1)
+        for (uint8_t ad = 0x08; ad < 0x78; ad++) {
+          bus.beginTransmission(ad);
+          if (bus.endTransmission() == 0) seen += (seen.length() ? " 0x" : "0x") + String(ad, HEX);
+        }
+      live.i2cScan = seen;
       static uint32_t lastLog = 0;
-      if (!lastLog || now - lastLog > 600000UL) { lastLog = now; logEvent("warning", "seismograph", "no MPU6050 or LIS3DH found on " + pinName(cfg.shakeSda) + "/" + pinName(cfg.shakeScl) + " - check the wiring"); }
+      if (!lastLog || now - lastLog > 600000UL) {
+        lastLog = now;
+        logEvent("warning", "seismograph", "no MPU6050 or LIS3DH found on " + pinName(cfg.shakeSda) + "/" + pinName(cfg.shakeScl) +
+                 (live.i2cBus != 1 ? String(" - the I2C bus did not start") : seen.length() ? " - answering: " + seen : String(" - nothing answers: check power, solder and SDA/SCL")));
+      }
       return;
     }
     live.shakeOK = 1;

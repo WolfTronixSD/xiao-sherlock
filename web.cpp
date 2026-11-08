@@ -109,6 +109,8 @@ static void handleStatus() {
   d["tiltLim"] = cfg.shakeTiltDeg;
   d["shockLim"] = cfg.shakeShockMg;
   d["shakeChip"] = shakeChip();
+  d["i2cBus"] = live.i2cBus;
+  d["i2cScan"] = live.i2cScan;
   JsonArray ax = d["auxMv"].to<JsonArray>();
   for (int i = 0; i < 3; i++) ax.add(live.auxMv[i]);
   d["carMv"] = carMv();

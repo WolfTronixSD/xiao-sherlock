@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.4 (2026-11-08): Who goes there
+- When the Seismograph finds no chip, it scans the whole I2C bus every 10 s. The Scene then shows whether the bus started and which addresses answer (nothing at all = power, solder or wiring). The case log line says the same.
+
 ## 3.14.3 (2026-11-08): Two lines on the wire
 - Fix: the Seismograph never found its chip. It tried to share I2C port 0 with the camera's own sensor bus, so the bus failed to start. It now has I2C port 1 to itself, at 100 kHz (kinder to longer wires). A bus that cannot start is now written to the case log.
 
