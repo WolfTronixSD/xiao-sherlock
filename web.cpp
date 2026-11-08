@@ -80,6 +80,8 @@ static void handleStatus() {
   d["wakes"] = campWakeCount();
   d["battMv"] = batteryMv();
   d["mesh"] = cfg.meshEn;
+  d["meshPins"] = cfg.meshEn ? pinName(cfg.meshTx) + (cfg.meshRx >= 0 ? "/" + pinName(cfg.meshRx) : String("")) : String("");
+  d["meshHeard"] = meshHeardSec();
   d["timeOk"] = timeValid();
   JsonArray in = d["inputs"].to<JsonArray>();
   for (int i = 0; i < MAX_INPUTS; i++) {

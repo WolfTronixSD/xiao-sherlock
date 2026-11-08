@@ -629,6 +629,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.14.6','2026-11-08','Is anyone there?',["Doctor's Report: the Pigeon Post shows when the radio was last heard instead of a hopeful 'wired'"]],
  ['3.14.5','2026-11-08','The right door',["Fix: the Seismograph's I2C bus starts again (it picks whichever port the camera leaves free)"]],
  ['3.14.4','2026-11-08','Who goes there',["When the Seismograph finds no chip, The Scene shows whether the I2C bus started and which addresses answer"]],
  ['3.14.3','2026-11-08','Two lines on the wire',["Fix: the Seismograph now finds its LIS3DH or MPU6050 (it was fighting the camera for the same I2C bus)"]],
@@ -691,7 +692,7 @@ function health(){if(!$('health')||st.tempC==null)return;const up=st.uptime,d=Ma
  if(st.mqtt>=0)rows.push(['MQTT broker',st.mqtt==1?'connected':'not reachable',st.mqtt==1?0:2]);
  if(st.battMv>=0)rows.push(['Battery',(st.battMv/1000).toFixed(2)+' V',st.battMv>3700?0:st.battMv>3400?1:2]);
  if(st.camp)rows.push(['Camp mode',`sleeps in ${Math.floor(st.sleepIn/60)}m ${st.sleepIn%60}s (woken by ${esc(st.wakeWhy)}, wake #${st.wakes})`,st.sleepIn>60?0:1]);
- if(st.mesh)rows.push(['Pigeon Post','LoRa radio wired',0]);
+ if(st.mesh)rows.push(['Pigeon Post',`on (${st.meshPins}); `+(st.meshHeard<0?'nothing heard from the radio yet (it only talks when a message arrives)':'radio last heard '+(st.meshHeard<120?st.meshHeard+' s':Math.round(st.meshHeard/60)+' min')+' ago'),st.meshHeard<0?1:0]);
  if(!st.timeOk)rows.push(['Clock','not set (no internet)',1]);
  $('campRow').style.display=st.camp?'':'none';
  $('health').innerHTML=rows.map(r=>`<tr><td><span class="lamp ${['lo','hi','rec'][r[2]]}"></span>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}

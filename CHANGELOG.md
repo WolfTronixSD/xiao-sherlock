@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.6 (2026-11-08): Is anyone there?
+- The Doctor's Report no longer claims "LoRa radio wired": the camera cannot tell whether the radio is plugged in, since the radio only answers when a message arrives. It now shows the pins and when the radio was last heard (needs the D5 wire).
+
 ## 3.14.5 (2026-11-08): The right door
 - Fix: the I2C bus for the Seismograph would not start on port 1, because the camera driver uses that one. The Seismograph now tries port 0 first and port 1 only if that fails.
 
