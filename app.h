@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.14.1"
+#define FW_VERSION "3.14.2"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -83,7 +83,7 @@ struct Config {
   int  shakeTiltDeg = 3;    // alarm when tilted this much from the resting angle (0 = off)
   int  shakeShockMg = 150;  // alarm on a jolt stronger than this (milli-g, 0 = off)
   Actions shakeAct = {true, true, true, true};
-  // the LIS3DH's three spare analog inputs (0.9-1.8 V each)
+  // the LIS3DH's three spare analog inputs (0.8-1.6 V each)
   bool auxLight = false;    // ADC1: an LDR sets the light level for the night watch instead of the picture
   bool battLis = false;     // ADC2: battery voltage (battMul is the divider ratio)
   bool carEn = false;       // ADC3: the car's 12 V

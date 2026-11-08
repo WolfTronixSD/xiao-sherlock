@@ -2,12 +2,15 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.2 (2026-11-08): Measured twice
+- The LIS3DH spare inputs now use ST's range, 0.8 to 1.6 V around 1.2 V (it was 0.9 to 1.8 V). The light level maps 0.8 V to 0 and 1.6 V to 255. The dividers stay the same.
+
 ## 3.14.1 (2026-11-07): A room of its own
 - The Seismograph settings get their own tile instead of sitting under "More".
 
 ## 3.14.0 (2026-11-07): The LIS3DH
 - The Seismograph now also works with a **LIS3DH** board (I2C at 0x18 or 0x19; wire CS to 3V3 and SDO to GND). The camera uses whichever chip answers, so the MPU6050 still works. Any two free pins can be SDA and SCL.
-- The LIS3DH's three spare analog inputs (they read 0.9 to 1.8 V, so each needs a divider), each switched on in the Seismograph settings:
+- The LIS3DH's three spare analog inputs (they read 0.8 to 1.6 V, so each needs a divider), each switched on in the Seismograph settings:
   - **ADC1, light:** 3V3 - 10k - LDR - ADC1 - 10k - GND. The night watch then follows this light level instead of the picture's brightness.
   - **ADC2, battery:** battery + - 200k - ADC2 - 100k - GND, with a divider ratio of 300. Shown wherever the battery is (heartbeat, LoRa alerts, The Scene).
   - **ADC3, the car's 12 V:** fused 12 V - 91k - ADC3 - 10k - GND, plus 100 nF to GND. When armed, an alarm goes off when the voltage jumps as the engine starts. A warning (Telegram and LoRa) comes when the car battery stays low for a minute, at most once every 6 hours.
