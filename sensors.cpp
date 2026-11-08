@@ -1,7 +1,7 @@
 // External sensors: GPIO tripwires (door switch, PIR, button), HC-SR04 ultrasonic, HLK-LD2450 radar.
 // To add a sensor: add its settings in config.cpp, a Source in app.h, and poll it in sensorTask().
 #include "app.h"
-#include <bus.h>
+#include <Wire.h>
 
 // The camera owns I2C port 0 for its own sensor (SCCB), so the Seismograph uses port 1.
 static TwoWire &bus = Wire1;
