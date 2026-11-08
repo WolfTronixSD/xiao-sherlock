@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.3 (2026-11-08): Two lines on the wire
+- Fix: the Seismograph never found its chip. It tried to share I2C port 0 with the camera's own sensor bus, so the bus failed to start. It now has I2C port 1 to itself, at 100 kHz (kinder to longer wires). A bus that cannot start is now written to the case log.
+
 ## 3.14.2 (2026-11-08): Measured twice
 - The LIS3DH spare inputs now use ST's range, 0.8 to 1.6 V around 1.2 V (it was 0.9 to 1.8 V). The light level maps 0.8 V to 0 and 1.6 V to 255. The dividers stay the same.
 

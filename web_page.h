@@ -629,6 +629,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.14.3','2026-11-08','Two lines on the wire',["Fix: the Seismograph now finds its LIS3DH or MPU6050 (it was fighting the camera for the same I2C bus)"]],
  ['3.14.2','2026-11-08','Measured twice',["LIS3DH spare inputs use the datasheet range, 0.8 to 1.6 V"]],
  ['3.14.1','2026-11-07','A room of its own',["The Seismograph settings get their own tile instead of sitting under More"]],
  ['3.14.0','2026-11-07','The LIS3DH',["The Seismograph also works with a LIS3DH (found by itself, MPU6050 still works)","The LIS3DH's three spare inputs: an LDR for the night watch, the battery voltage, and the car's 12 V (alarm when the engine starts, warning when the battery runs low)"]],
