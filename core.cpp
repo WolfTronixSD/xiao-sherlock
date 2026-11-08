@@ -38,7 +38,8 @@ bool mountSD() {
   SD.end();
   // 20 MHz makes directory scans 5x faster than the 4 MHz default; fall back for picky cards
   live.sdOK = SD.begin(SD_CS_PIN, SPI, 20000000, "/sd", 10) && SD.cardType() != CARD_NONE;
-  if (!live.sdOK) { SD.end(); live.sdOK = SD.begin(SD_CS_PIN, SPI, 4000000, "/sd", 10) && SD.cardType() != CARD_NONE; }
+  live.sdMHz = live.sdOK ? 20 : 0;
+  if (!live.sdOK) { SD.end(); live.sdOK = SD.begin(SD_CS_PIN, SPI, 4000000, "/sd", 10) && SD.cardType() != CARD_NONE; if (live.sdOK) live.sdMHz = 4; }
   if (live.sdOK && !SD.exists(SEC_DIR)) SD.mkdir(SEC_DIR);
   return live.sdOK;
 }
