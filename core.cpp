@@ -8,9 +8,31 @@
 static SemaphoreHandle_t sdLock = xSemaphoreCreateMutex();
 static SemaphoreHandle_t evLock = xSemaphoreCreateMutex();
 
-void lockSD() { xSemaphoreTake(sdLock, portMAX_DELAY); }
-void unlockSD() { xSemaphoreGive(sdLock); }
-bool tryLockSD(uint32_t ms) { return xSemaphoreTake(sdLock, pdMS_TO_TICKS(ms)) == pdTRUE; }
+// Who holds the SD card and for how long: a task that keeps it for seconds stalls the camera (1-frame videos)
+static volatile uint32_t sdHeldAt = 0;
+static char sdHolder[16] = "";
+static void sdTook() { sdHeldAt = millis(); strlcpy(sdHolder, pcTaskGetName(nullptr), sizeof(sdHolder)); }
+void lockSD() {
+  uint32_t t = millis();
+  xSemaphoreTake(sdLock, portMAX_DELAY);
+  uint32_t w = millis() - t;
+  if (w > live.sdWaitMs) { live.sdWaitMs = w; strlcpy(live.sdWaiter, pcTaskGetName(nullptr), sizeof(live.sdWaiter)); }
+  sdTook();
+}
+void unlockSD() {
+  uint32_t held = millis() - sdHeldAt;
+  if (held > live.sdHoldMs) { live.sdHoldMs = held; strlcpy(live.sdHogger, sdHolder, sizeof(live.sdHogger)); }
+  bool slow = held > 1000;
+  char who[16];
+  strlcpy(who, sdHolder, sizeof(who));
+  xSemaphoreGive(sdLock);
+  if (slow) logEvent("warning", "sd", String(who) + " kept the SD card for " + String(held) + " ms");
+}
+bool tryLockSD(uint32_t ms) {
+  bool ok = xSemaphoreTake(sdLock, pdMS_TO_TICKS(ms)) == pdTRUE;
+  if (ok) sdTook();
+  return ok;
+}
 
 bool mountSD() {
   SD.end();

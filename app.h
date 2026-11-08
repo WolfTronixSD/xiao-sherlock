@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.14.8"
+#define FW_VERSION "3.14.9"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -152,6 +152,10 @@ struct LiveState {
   volatile float micDb = -96;
   volatile bool audioRec = false;
   volatile bool videoRec = false;
+  volatile uint32_t sdHoldMs = 0;     // longest anyone kept the SD card since start, and who
+  char          sdHogger[16] = "";
+  volatile uint32_t sdWaitMs = 0;     // longest anyone waited for the SD card, and who
+  char          sdWaiter[16] = "";
   volatile float camFps = 0;         // pictures per second over the last 5 s
   volatile int  camGrabMs = 0;       // slowest wait for a picture in the last 5 s
   volatile int  camLoopMs = 0;       // slowest camera loop (saving, motion, video) in the last 5 s

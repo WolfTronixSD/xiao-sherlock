@@ -57,6 +57,10 @@ static void handleStatus() {
   d["camFps"] = round(live.camFps * 10) / 10.0;
   d["camGrabMs"] = live.camGrabMs;
   d["camLoopMs"] = live.camLoopMs;
+  d["sdHoldMs"] = live.sdHoldMs;
+  d["sdHogger"] = live.sdHogger;
+  d["sdWaitMs"] = live.sdWaitMs;
+  d["sdWaiter"] = live.sdWaiter;
   d["maxBlock"] = ESP.getMaxAllocHeap() / 1024;
   d["tempC"] = (int)roundf(temperatureRead());
   d["totalMB"] = live.totalMB;
