@@ -180,7 +180,7 @@ void buildFields() {
       "Car: 80 to 150 (lower = more sensitive). A slammed door nearby or a passing truck can reach 50. Watch the live value on The Scene while you knock. "
       "With Two witnesses on, a jolt plus a loud sound within the witness time is a strong break-in sign.");
   add(g, "auxLight", "LIS3DH ADC1: LDR light level for the night watch", 'b', &cfg.auxLight, 0, 0, nullptr,
-      "The LIS3DH's spare inputs only read 0.9 to 1.8 V. LDR wiring: 3V3 - 10k - LDR - ADC1 - 10k - GND. Bright reads high, dark low. "
+      "The LIS3DH's spare inputs only read 0.8 to 1.6 V. LDR wiring: 3V3 - 10k - LDR - ADC1 - 10k - GND. Bright reads high, dark low. "
       "When on, the night watch uses this instead of the picture's brightness (same 0-255 scale; tune the night thresholds while watching The Scene).");
   add(g, "battLis", "LIS3DH ADC2: battery voltage", 'b', &cfg.battLis, 0, 0, nullptr,
       "Battery + - 200k - ADC2 - 100k - GND (divides by 3: 3.0-4.2 V becomes 1.0-1.4 V), then set the divider ratio in Camp mode to 300. "

@@ -189,14 +189,15 @@ static bool accRead(float a[3]) {
   return true;
 }
 
-// The three spare inputs: 10 bits, about -32512 at 1.8 V to +32512 at 0.9 V (reversed).
+// The three spare inputs: 10 bits, two's complement around 1.2 V, 0.8 to 1.6 V (ST: "1200 mV +-400 mV").
+// Higher voltage gives a lower code (as in Adafruit's example); checked once real wiring is on.
 static bool auxRead(int mv[3]) {
   Wire.beginTransmission(accAddr); Wire.write(0x88);  // OUT_ADC1_L with auto-increment
   if (Wire.endTransmission(false) != 0 || Wire.requestFrom(accAddr, (uint8_t)6) != 6) return false;
   for (int i = 0; i < 3; i++) {
     uint8_t lo = Wire.read(), hi = Wire.read();
     int16_t v = (int16_t)((hi << 8) | lo);
-    mv[i] = 1350 - (int32_t)v * 450 / 32512;
+    mv[i] = 1200 - (int32_t)v * 400 / 32768;
   }
   return true;
 }
@@ -222,8 +223,8 @@ static void auxTick(uint32_t now) {
   last = now;
   for (int i = 0; i < 3; i++) { live.auxMv[i] = sum[i] / n; sum[i] = 0; }
   n = 0;
-  // the LDR: 0.9 V (dark) .. 1.8 V (bright) becomes 0..255, the same scale as the picture's brightness
-  if (cfg.auxLight) live.light = constrain((live.auxMv[0] - 900) * 255 / 900, 0, 255);
+  // the LDR: 0.8 V (dark) .. 1.6 V (bright) becomes 0..255, the same scale as the picture's brightness
+  if (cfg.auxLight) live.light = constrain((live.auxMv[0] - 800) * 255 / 800, 0, 255);
   int car = carMv();
   if (car < 0) return;
   String volts = String(car / 1000.0f, 1) + " V";
