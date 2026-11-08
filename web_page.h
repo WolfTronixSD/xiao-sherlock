@@ -629,6 +629,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.14.10','2026-11-08','A clerk for the files',['Fix: videos with only one frame. Saving a file can take 2 s on a busy card, and the camera waited for it. Photos and video are now copied to PSRAM and written by their own clerk, so the camera keeps filming','Video fps is measured from when the pictures were taken']],
  ['3.14.9','2026-11-08','Who has the card',['The case log names any task that keeps the SD card longer than 1 s, to find what freezes the camera']],
  ['3.14.8','2026-11-08','Keeping time',["Doctor's Report: Camera pace shows pictures per second and the slowest wait and work, to find why videos got only one frame"]],
  ['3.14.7','2026-11-08','Unstuck',['Seismograph: frees an I2C bus whose SDA line is stuck at 0 V (clocks SCL 9 times, then a STOP), at start and on every retry; says so if SDA stays low']],

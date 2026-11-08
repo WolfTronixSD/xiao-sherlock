@@ -2,6 +2,11 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.10 (2026-11-08): A clerk for the files
+- Fix: Seismograph and test videos had only one frame. Creating a file on the card takes about 2 s, and the camera loop waited for every photo and video write, so it stood still while the clip ran. The camera now copies each picture to PSRAM and a separate writer task saves photos and video in order. The camera keeps filming at full pace, and pictures are dropped only if PSRAM runs low.
+- Video fps is now measured from when the pictures were taken, not from how long the card took.
+- Status shows the SD clock (sdMHz) and the writer backlog (camBacklog).
+
 ## 3.14.9 (2026-11-08): Who has the card
 - The case log names any task that keeps the SD card longer than 1 s, and the status shows the longest hold and the longest wait with the task names. A test event froze the camera loop for 5.6 s; this shows who held the card.
 

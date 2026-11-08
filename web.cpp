@@ -57,6 +57,8 @@ static void handleStatus() {
   d["camFps"] = round(live.camFps * 10) / 10.0;
   d["camGrabMs"] = live.camGrabMs;
   d["camLoopMs"] = live.camLoopMs;
+  d["camBacklog"] = cameraBacklog();
+  d["sdMHz"] = live.sdMHz;
   d["sdHoldMs"] = live.sdHoldMs;
   d["sdHogger"] = live.sdHogger;
   d["sdWaitMs"] = live.sdWaitMs;

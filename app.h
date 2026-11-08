@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.14.9"
+#define FW_VERSION "3.14.10"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -152,6 +152,7 @@ struct LiveState {
   volatile float micDb = -96;
   volatile bool audioRec = false;
   volatile bool videoRec = false;
+  volatile int  sdMHz = 0;           // SD clock: 20, or 4 for a picky card
   volatile uint32_t sdHoldMs = 0;     // longest anyone kept the SD card since start, and who
   char          sdHogger[16] = "";
   volatile uint32_t sdWaitMs = 0;     // longest anyone waited for the SD card, and who
@@ -230,6 +231,7 @@ void logEvent(const String &kind, const String &who, const String &detail);
 void flushEvents();
 String eventsJson(int max);
 void raiseEvent(Source src, const String &who, const String &detail);
+int cameraBacklog();
 void setArmed(bool on, const String &who, const String &why);
 void janitorStart();
 String sensorSnapshot();

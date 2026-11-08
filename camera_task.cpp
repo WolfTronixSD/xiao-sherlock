@@ -112,7 +112,7 @@ static void put16(uint8_t *p, uint16_t v) { p[0] = v; p[1] = v >> 8; }
 struct Avi {
   File file;
   String path;
-  uint32_t *index = nullptr, cap = 0, frames = 0, movi = 4, maxFrame = 0, start = 0;
+  uint32_t *index = nullptr, cap = 0, frames = 0, movi = 4, maxFrame = 0, start = 0, first = 0, last = 0;
   uint16_t w = 0, h = 0;
 
   static void header(uint8_t *b, uint32_t frames, uint32_t fpsMilli, uint16_t w, uint16_t h, uint32_t movi, uint32_t idx, uint32_t maxFrame) {
@@ -133,7 +133,7 @@ struct Avi {
   }
 
   bool begin(const String &p) {
-    path = p; frames = 0; movi = 4; maxFrame = 0; w = h = 0; start = millis();
+    path = p; frames = 0; movi = 4; maxFrame = 0; w = h = 0; start = millis(); first = last = 0;
     uint8_t b[AVI_HDR];
     header(b, 0, 0, 0, 0, 4, 0, 0);
     lockSD();
@@ -143,20 +143,22 @@ struct Avi {
     return (bool)file;
   }
 
-  void add(camera_fb_t *fb) {
+  void add(const uint8_t *buf, uint32_t len, uint16_t fw, uint16_t fh, uint32_t ms) {
     if (frames >= cap) {
       uint32_t nc = cap ? cap * 2 : 512;
       uint32_t *ni = (uint32_t *)ps_realloc(index, nc * 8);
       if (!ni) return;
       index = ni; cap = nc;
     }
-    if (!w) { w = fb->width; h = fb->height; }
-    uint32_t len = fb->len, padded = (len + 1) & ~1UL;
+    if (!w) { w = fw; h = fh; }
+    if (!frames) first = ms;
+    last = ms;
+    uint32_t padded = (len + 1) & ~1UL;
     uint8_t c[8];
     memcpy(c, "00dc", 4); put32(c + 4, len);
     lockSD();
     file.write(c, 8);
-    file.write(fb->buf, len);
+    file.write(buf, len);
     if (padded > len) file.write((uint8_t)0);
     unlockSD();
     index[frames * 2] = movi; index[frames * 2 + 1] = len;
@@ -166,8 +168,9 @@ struct Avi {
   }
 
   float finish() {
-    uint32_t ms = millis() - start;
-    float fps = ms ? frames * 1000.0f / ms : 0;
+    // the pace the pictures were taken at (not how long the card took to write them)
+    uint32_t ms = frames > 1 ? last - first : 0;
+    float fps = ms ? (frames - 1) * 1000.0f / ms : (frames ? 1.0f : 0);
     uint8_t b[AVI_HDR];
     lockSD();
     uint8_t e[16];
@@ -185,6 +188,87 @@ struct Avi {
     return fps;
   }
 };
+
+// ---------- the evidence writer ----------
+// Creating a file on a busy card can take 2 s, so the camera loop never touches the SD card: it copies
+// each picture to PSRAM and hands it to this task, which writes photos and video in order.
+enum JobType : uint8_t { JOB_PHOTO, JOB_AVI_BEGIN, JOB_FRAME, JOB_AVI_END };
+struct Job {
+  JobType type;
+  uint8_t *buf;
+  uint32_t len, ms;
+  uint16_t w, h;
+  int8_t n, of;     // photo n of "of"
+  char path[96];
+};
+static QueueHandle_t jobs = nullptr;
+static volatile int jobsQueued = 0;
+static volatile bool writerVideo = false;  // the writer still has a video open
+
+static bool postJob(JobType t, camera_fb_t *fb, const String &path = "", int n = 0, int of = 0) {
+  if (!jobs) return false;
+  Job *j = (Job *)ps_malloc(sizeof(Job));
+  if (!j) return false;
+  memset(j, 0, sizeof(Job));
+  j->type = t; j->n = n; j->of = of; j->ms = millis();
+  strlcpy(j->path, path.c_str(), sizeof(j->path));
+  if (fb) {
+    // keep at least 1 MB of PSRAM for everything else; drop the picture rather than run dry
+    if (ESP.getFreePsram() < 1024 * 1024 + fb->len || !(j->buf = (uint8_t *)ps_malloc(fb->len))) { free(j); return false; }
+    memcpy(j->buf, fb->buf, fb->len);
+    j->len = fb->len; j->w = fb->width; j->h = fb->height;
+  }
+  if (xQueueSend(jobs, &j, t == JOB_FRAME ? 0 : pdMS_TO_TICKS(200)) != pdTRUE) { free(j->buf); free(j); return false; }
+  jobsQueued++;
+  return true;
+}
+
+static void writerTask(void *) {
+  Avi avi;
+  bool open = false;
+  for (;;) {
+    Job *j;
+    if (xQueueReceive(jobs, &j, portMAX_DELAY) != pdTRUE) continue;
+    jobsQueued--;
+    switch (j->type) {
+      case JOB_AVI_BEGIN:
+        if (open) avi.finish();
+        open = avi.begin(j->path);
+        writerVideo = open;
+        if (!open) logEvent("error", "camera", "could not create video file");
+        break;
+      case JOB_FRAME:
+        if (open) avi.add(j->buf, j->len, j->w, j->h, j->ms);
+        break;
+      case JOB_AVI_END:
+        if (open) {
+          float fps = avi.finish();
+          open = false;
+          logEvent("saved", "camera", "video " + avi.path.substring(avi.path.lastIndexOf('/') + 1) + " (" + String(avi.frames) + " frames, " + String(fps, 1) + " fps)");
+          if (avi.path.indexOf("_telegram-") >= 0) telegramSendFile(avi.path, "221B: the moving picture you asked for");
+        }
+        writerVideo = false;
+        break;
+      case JOB_PHOTO: {
+        lockSD();
+        File f = openSD(j->path, FILE_WRITE);
+        bool ok = f;
+        if (f) { f.write(j->buf, j->len); f.close(); }
+        unlockSD();
+        if (!ok) logEvent("error", "camera", "could not save photo");
+        if (ok && j->n == 1) { portENTER_CRITICAL(&reqMux); strlcpy(lastPhoto, j->path, sizeof(lastPhoto)); portEXIT_CRITICAL(&reqMux); }
+        if (j->n == j->of) {
+          String base = String(j->path);
+          base = base.substring(base.lastIndexOf('/') + 1, base.lastIndexOf('_'));
+          logEvent("saved", "camera", String(j->of) + " photo(s) " + base + "_*.jpg");
+        }
+        break;
+      }
+    }
+    free(j->buf);
+    free(j);
+  }
+}
 
 // ---------- motion detection ----------
 // Each analysed frame is decoded at 1/8 size, turned into grey (its average is the light level
@@ -269,8 +353,8 @@ String motionGridJson() {
 
 // ---------- the camera task ----------
 static void cameraTask(void *) {
-  Avi avi;
   bool aviOpen = false;
+  uint32_t dropped = 0;
   String photoBase;
   int photoIdx = 0;
   uint32_t nextPhoto = 0, lastSnap = 0, lastMotion = 0, frames = 0;
@@ -330,18 +414,17 @@ static void cameraTask(void *) {
     strlcpy(vtag, videoTag, sizeof(vtag));
     portEXIT_CRITICAL(&reqMux);
     if (wantVideo && !aviOpen) {
-      aviOpen = avi.begin(evidencePath(stamp() + "_" + vtag + ".avi"));
-      live.videoRec = aviOpen;
-      if (!aviOpen) { logEvent("error", "camera", "could not create video file"); portENTER_CRITICAL(&reqMux); videoWanted = false; portEXIT_CRITICAL(&reqMux); }
+      aviOpen = postJob(JOB_AVI_BEGIN, nullptr, evidencePath(stamp() + "_" + vtag + ".avi"));
+      if (!aviOpen) { logEvent("error", "camera", "could not start a video (writer busy)"); portENTER_CRITICAL(&reqMux); videoWanted = false; portEXIT_CRITICAL(&reqMux); }
     }
-    if (aviOpen && wantVideo) avi.add(fb);
+    if (aviOpen && wantVideo && !postJob(JOB_FRAME, fb)) dropped++;
     if (aviOpen && !wantVideo) {
-      float fps = avi.finish();
+      while (!postJob(JOB_AVI_END, nullptr)) delay(50);  // the end must arrive, or the file stays open
       aviOpen = false;
-      live.videoRec = false;
-      logEvent("saved", "camera", "video " + avi.path.substring(avi.path.lastIndexOf('/') + 1) + " (" + String(avi.frames) + " frames, " + String(fps, 1) + " fps)");
-      if (avi.path.indexOf("_telegram-") >= 0) telegramSendFile(avi.path, "221B: the moving picture you asked for");
+      if (dropped) logEvent("warning", "camera", "video: " + String(dropped) + " picture(s) dropped, the card could not keep up");
+      dropped = 0;
     }
+    live.videoRec = aviOpen || writerVideo;
 
     // photos
     portENTER_CRITICAL(&reqMux);
@@ -353,14 +436,8 @@ static void cameraTask(void *) {
     if (want) { photoBase = evidencePath(stamp() + "_" + ptag); photoIdx = want; nextPhoto = now; }
     if (photoIdx > 0 && (int32_t)(now - nextPhoto) >= 0) {
       int n = cfg.photoCount - photoIdx + 1;
-      lockSD();
-      File f = openSD(photoBase + "_" + n + ".jpg", FILE_WRITE);
-      bool ok = f;
-      if (f) { f.write(fb->buf, fb->len); f.close(); }
-      unlockSD();
-      if (!ok) logEvent("error", "camera", "could not save photo");
-      if (ok && n == 1) { String p = photoBase + "_1.jpg"; portENTER_CRITICAL(&reqMux); strlcpy(lastPhoto, p.c_str(), sizeof(lastPhoto)); portEXIT_CRITICAL(&reqMux); }
-      if (--photoIdx == 0) logEvent("saved", "camera", String(cfg.photoCount) + " photo(s) " + photoBase.substring(photoBase.lastIndexOf('/') + 1) + "_*.jpg");
+      if (!postJob(JOB_PHOTO, fb, photoBase + "_" + n + ".jpg", n, cfg.photoCount)) logEvent("error", "camera", "could not save photo (out of memory)");
+      photoIdx--;
       nextPhoto = now + cfg.photoIntervalMs;
     }
 
@@ -370,4 +447,9 @@ static void cameraTask(void *) {
   }
 }
 
-void cameraStart() { xTaskCreatePinnedToCore(cameraTask, "camera", 8192, nullptr, 4, nullptr, 1); }
+void cameraStart() {
+  jobs = xQueueCreate(400, sizeof(Job *));
+  xTaskCreatePinnedToCore(writerTask, "writer", 6144, nullptr, 2, nullptr, 0);
+  xTaskCreatePinnedToCore(cameraTask, "camera", 8192, nullptr, 4, nullptr, 1);
+}
+int cameraBacklog() { return jobsQueued; }
