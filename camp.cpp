@@ -11,6 +11,8 @@
 #include "driver/rtc_io.h"
 
 static HardwareSerial meshSerial(2);
+static volatile uint32_t meshHeardAt = 0;  // millis() of the last line from the radio (0 = never)
+int meshHeardSec() { return meshHeardAt ? (int)((millis() - meshHeardAt) / 1000) : -1; }
 static bool meshActive = false;
 static SemaphoreHandle_t meshLock = xSemaphoreCreateMutex();
 static uint32_t meshLast = 0;
@@ -241,7 +243,7 @@ static void meshCmdTask(void *) {
       else if (buf.length() < 240) buf += c;
     }
     xSemaphoreGive(meshLock);
-    if (got.length()) handleLine(got);
+    if (got.length()) { meshHeardAt = millis(); handleLine(got); }
   }
 }
 

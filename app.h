@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.14.5"
+#define FW_VERSION "3.14.6"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -290,6 +290,7 @@ const char *campWakeWhy();
 uint32_t campWakeCount();
 void meshBegin();
 bool meshSend(const String &text, bool force);
+int  meshHeardSec();  // seconds since the radio last sent us a line, -1 never
 void meshCmdStart();
 int  batteryMv();
 String battText();
