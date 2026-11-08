@@ -3,8 +3,10 @@
 #include "app.h"
 #include <Wire.h>
 
-// The camera owns I2C port 0 for its own sensor (SCCB), so the Seismograph uses port 1.
-static TwoWire &bus = Wire1;
+// The camera driver claims one of the two I2C ports for its own sensor (SCCB). Which one depends on the
+// driver build, so the Seismograph takes whichever port starts: port 0 first, then port 1.
+static TwoWire *busp = &Wire;
+#define bus (*busp)
 
 static volatile bool dirty = true;
 static int stable[MAX_INPUTS], last[MAX_INPUTS];  // tripwire debounce state
@@ -50,14 +52,16 @@ static void setupPins() {
     } else cfg.radarEn = false;
   }
   static bool wireOn = false;
-  if (wireOn) { bus.end(); wireOn = false; }
+  if (wireOn) { busp->end(); wireOn = false; }
   live.shakeOK = -1;
   live.i2cBus = -1;
   live.i2cScan = "";
   for (auto &m : live.auxMv) m = -1;
   if (cfg.shakeEn) {
     if (claim(cfg.shakeSda, "seismograph") && claim(cfg.shakeScl, "seismograph")) {
-      wireOn = bus.begin(cfg.shakeSda, cfg.shakeScl, 100000);
+      busp = &Wire;
+      wireOn = Wire.begin(cfg.shakeSda, cfg.shakeScl, 100000);
+      if (!wireOn) { busp = &Wire1; wireOn = Wire1.begin(cfg.shakeSda, cfg.shakeScl, 100000); }
       live.i2cBus = wireOn ? 1 : 0;
       if (!wireOn) logEvent("warning", "seismograph", "could not start the I2C bus on " + pinName(cfg.shakeSda) + "/" + pinName(cfg.shakeScl));
       live.shakeOK = 0;  // pollShake() looks for the chip
