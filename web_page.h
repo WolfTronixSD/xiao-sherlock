@@ -629,6 +629,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.14.8','2026-11-08','Keeping time',["Doctor's Report: Camera pace shows pictures per second and the slowest wait and work, to find why videos got only one frame"]],
  ['3.14.7','2026-11-08','Unstuck',['Seismograph: frees an I2C bus whose SDA line is stuck at 0 V (clocks SCL 9 times, then a STOP), at start and on every retry; says so if SDA stays low']],
  ['3.14.6','2026-11-08','Is anyone there?',["Doctor's Report: the Pigeon Post shows when the radio was last heard instead of a hopeful 'wired'"]],
  ['3.14.5','2026-11-08','The right door',["Fix: the Seismograph's I2C bus starts again (it picks whichever port the camera leaves free)"]],
@@ -685,6 +686,7 @@ function health(){if(!$('health')||st.tempC==null)return;const up=st.uptime,d=Ma
  const usedPct=st.totalMB?Math.round(100-st.freeMB*100/st.totalMB):0;
  const rows=[['Wi-Fi signal',st.rssi+' dBm'+(st.rssi>-60?' (strong)':st.rssi>-72?' (fair)':' (weak)'),st.rssi>-67?0:st.rssi>-78?1:2],
   ['Chip temperature',st.tempC+' &deg;C',st.tempC<65?0:st.tempC<80?1:2],
+  ['Camera pace',`${st.camFps} pictures/s (slowest wait ${st.camGrabMs} ms, slowest work ${st.camLoopMs} ms)`,st.camFps>=5?0:st.camFps>=2?1:2],
   ['Awake for',`${d}d ${h}h ${m}m`,up>600?0:1],
   ['Free memory',`${st.heap} KB (lowest ${st.minHeap} KB, largest piece ${st.maxBlock} KB)`,st.minHeap>40?0:st.minHeap>20?1:2],
   ['PSRAM free',(st.psram/1024).toFixed(1)+' MB',st.psram>1024?0:st.psram>256?1:2],

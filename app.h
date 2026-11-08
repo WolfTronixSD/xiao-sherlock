@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.14.7"
+#define FW_VERSION "3.14.8"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -152,6 +152,9 @@ struct LiveState {
   volatile float micDb = -96;
   volatile bool audioRec = false;
   volatile bool videoRec = false;
+  volatile float camFps = 0;         // pictures per second over the last 5 s
+  volatile int  camGrabMs = 0;       // slowest wait for a picture in the last 5 s
+  volatile int  camLoopMs = 0;       // slowest camera loop (saving, motion, video) in the last 5 s
   volatile int  motionPct[MAX_ZONES] = {};
   volatile int  motionGlobal = 0;
   volatile int  inputLevel[MAX_INPUTS] = {-1, -1, -1, -1};

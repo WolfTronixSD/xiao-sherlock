@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.8 (2026-11-08): Keeping time
+- The Doctor's Report shows the camera's pace: pictures per second, the slowest wait for a picture and the slowest work (saving, motion, video) in the last 5 s. Seismograph videos had only one frame, which means the camera loop slowed to a picture every few seconds; this shows where the time goes.
+
 ## 3.14.7 (2026-11-08): Unstuck
 - The Seismograph frees an I2C bus whose SDA line is stuck at 0 V, which happens when a sensor is cut off mid-byte by a restart or pin swap. It clocks SCL up to 9 times and sends a STOP, at start and on every retry. If SDA stays at 0 V, The Scene and the case log say to power-cycle the sensor and check the SDA wire.
 

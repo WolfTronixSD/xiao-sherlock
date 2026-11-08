@@ -54,6 +54,9 @@ static void handleStatus() {
   d["heap"] = ESP.getFreeHeap() / 1024;
   d["psram"] = ESP.getFreePsram() / 1024;
   d["minHeap"] = ESP.getMinFreeHeap() / 1024;
+  d["camFps"] = round(live.camFps * 10) / 10.0;
+  d["camGrabMs"] = live.camGrabMs;
+  d["camLoopMs"] = live.camLoopMs;
   d["maxBlock"] = ESP.getMaxAllocHeap() / 1024;
   d["tempC"] = (int)roundf(temperatureRead());
   d["totalMB"] = live.totalMB;
