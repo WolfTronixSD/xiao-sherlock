@@ -277,9 +277,18 @@ static void cameraTask(void *) {
   int failures = 0;
   logEvent("camera", "camera", "task started");
 
+  uint32_t paceAt = millis(), paceFrames = 0, grabMax = 0, loopMax = 0;
   for (;;) {
     if (configDirty) { configDirty = false; applyNow(); bgValid = false; delay(200); }
+    uint32_t t0 = millis();
     camera_fb_t *fb = esp_camera_fb_get();
+    uint32_t t1 = millis();
+    if (t1 - t0 > grabMax) grabMax = t1 - t0;
+    if (t1 - paceAt >= 5000) {  // the pace of the camera, for the Doctor's Report
+      live.camFps = paceFrames * 1000.0f / (t1 - paceAt);
+      live.camGrabMs = grabMax; live.camLoopMs = loopMax;
+      paceAt = t1; paceFrames = 0; grabMax = loopMax = 0;
+    }
     if (!fb) {
       if (++failures == 5) logEvent("error", "camera", "no picture from the camera");
       if (failures % 15 == 0) {  // still nothing: start the camera again (it can stay stuck after a soft restart)
@@ -299,6 +308,7 @@ static void cameraTask(void *) {
     if (failures >= 5 || !frames) logEvent("camera", "camera", "pictures arriving, " + String(fb->width) + "x" + String(fb->height));
     failures = 0;
     frames++;
+    paceFrames++;
     uint32_t now = millis();
 
     if (now - lastSnap >= 100) {  // keep a copy for the web live view
@@ -355,6 +365,7 @@ static void cameraTask(void *) {
     }
 
     esp_camera_fb_return(fb);
+    if (millis() - t1 > loopMax) loopMax = millis() - t1;
     delay(aviOpen ? 5 : 40);  // idle at ~15 fps; while recording still leave time for the web page
   }
 }
