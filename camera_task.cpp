@@ -267,6 +267,7 @@ static void writerTask(void *) {
     }
     free(j->buf);
     free(j);
+    vTaskDelay(2);  // a slow card busy-waits the SPI bus: let the idle task in, or the watchdog restarts the board
   }
 }
 
@@ -449,7 +450,8 @@ static void cameraTask(void *) {
 
 void cameraStart() {
   jobs = xQueueCreate(400, sizeof(Job *));
-  xTaskCreatePinnedToCore(writerTask, "writer", 6144, nullptr, 2, nullptr, 0);
+  // core 1 below the camera (4) and the microphone (5), away from Wi-Fi and the web page on core 0
+  xTaskCreatePinnedToCore(writerTask, "writer", 6144, nullptr, 1, nullptr, 1);
   xTaskCreatePinnedToCore(cameraTask, "camera", 8192, nullptr, 4, nullptr, 1);
 }
 int cameraBacklog() { return jobsQueued; }

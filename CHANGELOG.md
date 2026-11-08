@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.11 (2026-11-08): A quieter desk
+- Fix: the evidence writer from 3.14.10 ran on core 0, and while the slow card busy-waited the SPI bus it starved the idle task, so the watchdog restarted the board during a test event. It now runs on core 1 below the camera and microphone and pauses between files.
+
 ## 3.14.10 (2026-11-08): A clerk for the files
 - Fix: Seismograph and test videos had only one frame. Creating a file on the card takes about 2 s, and the camera loop waited for every photo and video write, so it stood still while the clip ran. The camera now copies each picture to PSRAM and a separate writer task saves photos and video in order. The camera keeps filming at full pace, and pictures are dropped only if PSRAM runs low.
 - Video fps is now measured from when the pictures were taken, not from how long the card took.
