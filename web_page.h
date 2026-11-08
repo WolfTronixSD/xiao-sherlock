@@ -629,6 +629,7 @@ function closeKino(){clearTimeout(K.timer);K.playing=false;$('kino').classList.r
 
 // ---------- the chronicles: newest first; add an entry for every new version ----------
 const CHRONICLES=[
+ ['3.14.5','2026-11-08','The right door',["Fix: the Seismograph's I2C bus starts again (it picks whichever port the camera leaves free)"]],
  ['3.14.4','2026-11-08','Who goes there',["When the Seismograph finds no chip, The Scene shows whether the I2C bus started and which addresses answer"]],
  ['3.14.3','2026-11-08','Two lines on the wire',["Fix: the Seismograph now finds its LIS3DH or MPU6050 (it was fighting the camera for the same I2C bus)"]],
  ['3.14.2','2026-11-08','Measured twice',["LIS3DH spare inputs use the datasheet range, 0.8 to 1.6 V"]],

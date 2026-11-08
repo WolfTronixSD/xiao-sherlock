@@ -2,11 +2,14 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.5 (2026-11-08): The right door
+- Fix: the I2C bus for the Seismograph would not start on port 1, because the camera driver uses that one. The Seismograph now tries port 0 first and port 1 only if that fails.
+
 ## 3.14.4 (2026-11-08): Who goes there
 - When the Seismograph finds no chip, it scans the whole I2C bus every 10 s. The Scene then shows whether the bus started and which addresses answer (nothing at all = power, solder or wiring). The case log line says the same.
 
 ## 3.14.3 (2026-11-08): Two lines on the wire
-- Fix: the Seismograph never found its chip. It tried to share I2C port 0 with the camera's own sensor bus, so the bus failed to start. It now has I2C port 1 to itself, at 100 kHz (kinder to longer wires). A bus that cannot start is now written to the case log.
+- Fix: the Seismograph never found its chip. It tried to share I2C port 0 with the camera's own sensor bus, so the bus failed to start. It moved to I2C port 1 at 100 kHz (which turned out to be the camera's; see 3.14.5) (kinder to longer wires). A bus that cannot start is now written to the case log.
 
 ## 3.14.2 (2026-11-08): Measured twice
 - The LIS3DH spare inputs now use ST's range, 0.8 to 1.6 V around 1.2 V (it was 0.9 to 1.8 V). The light level maps 0.8 V to 0 and 1.6 V to 255. The dividers stay the same.
