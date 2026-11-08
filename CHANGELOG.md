@@ -2,6 +2,9 @@
 
 The same history is shown in the web GUI under **The Workshop**.
 
+## 3.14.7 (2026-11-08): Unstuck
+- The Seismograph frees an I2C bus whose SDA line is stuck at 0 V, which happens when a sensor is cut off mid-byte by a restart or pin swap. It clocks SCL up to 9 times and sends a STOP, at start and on every retry. If SDA stays at 0 V, The Scene and the case log say to power-cycle the sensor and check the SDA wire.
+
 ## 3.14.6 (2026-11-08): Is anyone there?
 - The Doctor's Report no longer claims "LoRa radio wired": the camera cannot tell whether the radio is plugged in, since the radio only answers when a message arrives. It now shows the pins and when the radio was last heard (needs the D5 wire).
 

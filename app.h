@@ -5,7 +5,7 @@
 #include "FS.h"
 #include "SD.h"
 
-#define FW_VERSION "3.14.6"
+#define FW_VERSION "3.14.7"
 #define SEC_DIR    "/sec"
 #define MAX_INPUTS 4
 #define MAX_ZONES  6
@@ -161,6 +161,7 @@ struct LiveState {
   volatile int  shakeOK = -1;        // MPU6050 or LIS3DH: -1 off, 0 not found, 1 working
   volatile int  auxMv[3] = {-1, -1, -1};
   volatile int  i2cBus = -1;         // Seismograph bus: -1 off, 0 failed to start, 1 running
+  volatile bool i2cStuck = false;    // SDA still held low after bus recovery
   String        i2cScan;             // addresses that answered the last scan, "" = none or not scanned  // LIS3DH spare inputs in mV at the pin (-1 not read)
   volatile float tiltDeg = 0;        // tilt from the resting angle
   volatile float shockG = 0;         // biggest jolt in the last 2 s
